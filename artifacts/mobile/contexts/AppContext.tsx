@@ -8,171 +8,135 @@ import React, {
   useState,
 } from "react";
 
-export type CaseType = "human" | "animal";
-export type UrgencyLevel = "critical" | "high" | "medium" | "low";
-export type CaseStatus = "active" | "inprogress" | "resolved";
+export type HelpCategory = "food" | "medical" | "job" | "animal" | "education";
+export type HelpType = "need_help" | "give_help";
+export type RequestStatus = "active" | "inprogress" | "resolved";
 
-export interface EmergencyCase {
+export interface HelpRequest {
   id: string;
-  type: CaseType;
+  category: HelpCategory;
+  helpType: HelpType;
   title: string;
   description: string;
   location: string;
-  urgency: UrgencyLevel;
-  status: CaseStatus;
+  status: RequestStatus;
   timestamp: number;
-  reportedBy: string;
-  volunteersNeeded: number;
-  volunteersResponded: number;
-  donationsGoal?: number;
-  donationsReceived: number;
-  respondedBy: string[];
-}
-
-export interface Donation {
-  id: string;
-  caseId: string;
-  caseTitle: string;
-  amount: number;
-  timestamp: number;
+  postedBy: string;
+  contactPhone?: string;
 }
 
 export interface UserProfile {
   name: string;
   phone: string;
+  email: string;
   location: string;
-  isVolunteerActive: boolean;
-  casesHelped: number;
-  totalDonated: number;
+  helpedCount: number;
+  requestsPosted: number;
 }
 
 interface AppContextType {
-  cases: EmergencyCase[];
-  donations: Donation[];
+  requests: HelpRequest[];
   profile: UserProfile;
-  addCase: (
-    data: Omit<
-      EmergencyCase,
-      | "id"
-      | "timestamp"
-      | "volunteersResponded"
-      | "donationsReceived"
-      | "respondedBy"
-      | "status"
-    >
-  ) => void;
-  respondToCase: (caseId: string) => void;
-  addDonation: (caseId: string, caseTitle: string, amount: number) => void;
+  addRequest: (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => void;
+  resolveRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  toggleVolunteer: () => void;
   loading: boolean;
 }
 
-const CASES_KEY = "@sahara/cases";
-const DONATIONS_KEY = "@sahara/donations";
-const PROFILE_KEY = "@sahara/profile";
+const REQUESTS_KEY = "@sahara/requests_v2";
+const PROFILE_KEY = "@sahara/profile_v2";
 
-const SEED_CASES: EmergencyCase[] = [
+const SEED_REQUESTS: HelpRequest[] = [
   {
     id: "1",
-    type: "animal",
-    title: "Injured dog near Connaught Place",
+    category: "medical",
+    helpType: "need_help",
+    title: "Elderly man needs hospital help",
     description:
-      "A dog was hit by a vehicle and is lying injured near the main roundabout. Needs immediate veterinary care and transport to the nearest clinic.",
-    location: "Connaught Place, New Delhi",
-    urgency: "high",
+      "An elderly man near Ajmer Bus Stand needs help getting to the hospital. He has no family nearby and cannot travel alone.",
+    location: "Ajmer Bus Stand, Ajmer",
     status: "active",
-    timestamp: Date.now() - 30 * 60 * 1000,
-    reportedBy: "Rahul Sharma",
-    volunteersNeeded: 2,
-    volunteersResponded: 1,
-    donationsGoal: 5000,
-    donationsReceived: 1500,
-    respondedBy: [],
+    timestamp: Date.now() - 20 * 60 * 1000,
+    postedBy: "Ramesh Kumar",
+    contactPhone: "9876543210",
   },
   {
     id: "2",
-    type: "human",
-    title: "Elderly woman needs medical aid",
+    category: "food",
+    helpType: "need_help",
+    title: "Family of 4 needs food support",
     description:
-      "An elderly woman collapsed near Lajpat Nagar market. She is conscious but cannot walk. Ambulance called, volunteer companion needed to stay with her.",
-    location: "Lajpat Nagar, New Delhi",
-    urgency: "critical",
+      "A family with 2 small children has not eaten for 2 days. Father lost job recently. Need food items or home cooked meals urgently.",
+    location: "Vaishali Nagar, Ajmer",
     status: "active",
-    timestamp: Date.now() - 15 * 60 * 1000,
-    reportedBy: "Priya Verma",
-    volunteersNeeded: 3,
-    volunteersResponded: 1,
-    donationsReceived: 0,
-    respondedBy: [],
+    timestamp: Date.now() - 45 * 60 * 1000,
+    postedBy: "Sunita Devi",
   },
   {
     id: "3",
-    type: "animal",
-    title: "Stray cats colony needs food",
+    category: "animal",
+    helpType: "need_help",
+    title: "Injured dog near railway station",
     description:
-      "A colony of 12 stray cats near Sarojini Nagar has not been fed in 3 days. Donations needed for food and medical checkup for the entire colony.",
-    location: "Sarojini Nagar, New Delhi",
-    urgency: "medium",
+      "A dog was hit by a vehicle near Ajmer railway station. Needs immediate veterinary care. Cannot walk.",
+    location: "Ajmer Railway Station",
     status: "active",
-    timestamp: Date.now() - 2 * 60 * 60 * 1000,
-    reportedBy: "Anita Gupta",
-    volunteersNeeded: 1,
-    volunteersResponded: 0,
-    donationsGoal: 3000,
-    donationsReceived: 800,
-    respondedBy: [],
+    timestamp: Date.now() - 1.5 * 60 * 60 * 1000,
+    postedBy: "Priya Sharma",
+    contactPhone: "9012345678",
   },
   {
     id: "4",
-    type: "human",
-    title: "Family displaced by fire",
+    category: "job",
+    helpType: "give_help",
+    title: "Offering 2 jobs at my shop",
     description:
-      "A family of 5 lost their home in a fire last night. They urgently need emergency shelter, clothes, food, and support to get back on their feet.",
-    location: "Govindpuri, New Delhi",
-    urgency: "critical",
-    status: "inprogress",
-    timestamp: Date.now() - 8 * 60 * 60 * 1000,
-    reportedBy: "Vikram Singh",
-    volunteersNeeded: 5,
-    volunteersResponded: 3,
-    donationsGoal: 15000,
-    donationsReceived: 8500,
-    respondedBy: [],
+      "I have a general store and need 2 helpers. No experience needed. Good salary. Prefer local candidates from Ajmer.",
+    location: "Dargah Bazaar, Ajmer",
+    status: "active",
+    timestamp: Date.now() - 3 * 60 * 60 * 1000,
+    postedBy: "Mohammed Aslam",
+    contactPhone: "9123456789",
   },
   {
     id: "5",
-    type: "animal",
-    title: "Paralyzed dog needs rescue",
+    category: "education",
+    helpType: "give_help",
+    title: "Free tuition for class 6-10 students",
     description:
-      "A dog with paralyzed hind legs was abandoned near Nehru Place metro station. Requires urgent foster care, regular treatment, and physiotherapy.",
-    location: "Nehru Place, New Delhi",
-    urgency: "high",
+      "I am offering free tuition for students from poor families. Subjects: Maths, Science, Hindi. Classes on weekends.",
+    location: "Pushkar Road, Ajmer",
     status: "active",
-    timestamp: Date.now() - 4 * 60 * 60 * 1000,
-    reportedBy: "Sunita Devi",
-    volunteersNeeded: 2,
-    volunteersResponded: 0,
-    donationsGoal: 8000,
-    donationsReceived: 2200,
-    respondedBy: [],
+    timestamp: Date.now() - 5 * 60 * 60 * 1000,
+    postedBy: "Kavita Joshi",
+  },
+  {
+    id: "6",
+    category: "food",
+    helpType: "give_help",
+    title: "Free langar every Sunday",
+    description:
+      "We serve free food (langar) every Sunday at 1pm. Everyone is welcome. We can feed up to 100 people. Come and bring others.",
+    location: "Naya Bazaar Gurudwara, Ajmer",
+    status: "active",
+    timestamp: Date.now() - 6 * 60 * 60 * 1000,
+    postedBy: "Gurpreet Singh",
   },
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
   name: "",
   phone: "",
-  location: "New Delhi",
-  isVolunteerActive: false,
-  casesHelped: 0,
-  totalDonated: 0,
+  email: "",
+  location: "Ajmer",
+  helpedCount: 0,
+  requestsPosted: 0,
 };
 
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [cases, setCases] = useState<EmergencyCase[]>([]);
-  const [donations, setDonations] = useState<Donation[]>([]);
+  const [requests, setRequests] = useState<HelpRequest[]>([]);
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
@@ -185,119 +149,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loadData = async () => {
     try {
-      const [casesStr, donationsStr, profileStr] = await Promise.all([
-        AsyncStorage.getItem(CASES_KEY),
-        AsyncStorage.getItem(DONATIONS_KEY),
+      const [requestsStr, profileStr] = await Promise.all([
+        AsyncStorage.getItem(REQUESTS_KEY),
         AsyncStorage.getItem(PROFILE_KEY),
       ]);
-      setCases(casesStr ? JSON.parse(casesStr) : SEED_CASES);
-      setDonations(donationsStr ? JSON.parse(donationsStr) : []);
+      setRequests(requestsStr ? JSON.parse(requestsStr) : SEED_REQUESTS);
       setProfile(profileStr ? JSON.parse(profileStr) : DEFAULT_PROFILE);
     } catch {
-      setCases(SEED_CASES);
+      setRequests(SEED_REQUESTS);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveCases = useCallback(async (newCases: EmergencyCase[]) => {
-    await AsyncStorage.setItem(CASES_KEY, JSON.stringify(newCases));
-  }, []);
-
-  const saveDonations = useCallback(async (newDonations: Donation[]) => {
-    await AsyncStorage.setItem(DONATIONS_KEY, JSON.stringify(newDonations));
+  const saveRequests = useCallback(async (newRequests: HelpRequest[]) => {
+    await AsyncStorage.setItem(REQUESTS_KEY, JSON.stringify(newRequests));
   }, []);
 
   const saveProfile = useCallback(async (newProfile: UserProfile) => {
     await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
   }, []);
 
-  const addCase = useCallback(
-    (
-      data: Omit<
-        EmergencyCase,
-        | "id"
-        | "timestamp"
-        | "volunteersResponded"
-        | "donationsReceived"
-        | "respondedBy"
-        | "status"
-      >
-    ) => {
-      const newCase: EmergencyCase = {
+  const addRequest = useCallback(
+    (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => {
+      const newRequest: HelpRequest = {
         ...data,
-        id:
-          Date.now().toString() + Math.random().toString(36).substring(2, 7),
+        id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
         timestamp: Date.now(),
         status: "active",
-        volunteersResponded: 0,
-        donationsReceived: 0,
-        respondedBy: [],
       };
-      const updated = [newCase, ...cases];
-      setCases(updated);
-      saveCases(updated);
-    },
-    [cases, saveCases]
-  );
-
-  const respondToCase = useCallback(
-    (caseId: string) => {
-      const respondingName = profile.name || "Volunteer";
-      const updated = cases.map((c) => {
-        if (c.id === caseId && !c.respondedBy.includes(respondingName)) {
-          const newResponded = c.volunteersResponded + 1;
-          return {
-            ...c,
-            volunteersResponded: newResponded,
-            respondedBy: [...c.respondedBy, respondingName],
-            status: (
-              newResponded >= c.volunteersNeeded ? "inprogress" : c.status
-            ) as CaseStatus,
-          };
-        }
-        return c;
-      });
-      setCases(updated);
-      saveCases(updated);
-      const newProfile = {
-        ...profile,
-        casesHelped: profile.casesHelped + 1,
-      };
+      const updated = [newRequest, ...requests];
+      setRequests(updated);
+      saveRequests(updated);
+      const newProfile = { ...profile, requestsPosted: profile.requestsPosted + 1 };
       setProfile(newProfile);
       saveProfile(newProfile);
     },
-    [cases, profile, saveCases, saveProfile]
+    [requests, profile, saveRequests, saveProfile]
   );
 
-  const addDonation = useCallback(
-    (caseId: string, caseTitle: string, amount: number) => {
-      const donation: Donation = {
-        id:
-          Date.now().toString() + Math.random().toString(36).substring(2, 7),
-        caseId,
-        caseTitle,
-        amount,
-        timestamp: Date.now(),
-      };
-      const newDonations = [donation, ...donations];
-      setDonations(newDonations);
-      saveDonations(newDonations);
-      const updatedCases = cases.map((c) =>
-        c.id === caseId
-          ? { ...c, donationsReceived: c.donationsReceived + amount }
-          : c
+  const resolveRequest = useCallback(
+    (id: string) => {
+      const updated = requests.map((r) =>
+        r.id === id ? { ...r, status: "resolved" as RequestStatus } : r
       );
-      setCases(updatedCases);
-      saveCases(updatedCases);
-      const newProfile = {
-        ...profile,
-        totalDonated: profile.totalDonated + amount,
-      };
+      setRequests(updated);
+      saveRequests(updated);
+      const newProfile = { ...profile, helpedCount: profile.helpedCount + 1 };
       setProfile(newProfile);
       saveProfile(newProfile);
     },
-    [donations, cases, profile, saveDonations, saveCases, saveProfile]
+    [requests, profile, saveRequests, saveProfile]
   );
 
   const updateProfile = useCallback(
@@ -309,28 +211,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [profile, saveProfile]
   );
 
-  const toggleVolunteer = useCallback(() => {
-    const newProfile = {
-      ...profile,
-      isVolunteerActive: !profile.isVolunteerActive,
-    };
-    setProfile(newProfile);
-    saveProfile(newProfile);
-  }, [profile, saveProfile]);
-
   return (
     <AppContext.Provider
-      value={{
-        cases,
-        donations,
-        profile,
-        addCase,
-        respondToCase,
-        addDonation,
-        updateProfile,
-        toggleVolunteer,
-        loading,
-      }}
+      value={{ requests, profile, addRequest, resolveRequest, updateProfile, loading }}
     >
       {children}
     </AppContext.Provider>
