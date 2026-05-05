@@ -25,22 +25,17 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="alert">
-        <Icon
-          sf={{
-            default: "exclamationmark.triangle",
-            selected: "exclamationmark.triangle.fill",
-          }}
-        />
-        <Label>Alert</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="volunteer">
-        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
-        <Label>Volunteer</Label>
+        <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
+        <Label>Explore</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="alert">
+        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
+        <Label>Post</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="donate">
-        <Icon sf={{ default: "heart", selected: "heart.fill" }} />
-        <Label>Donate</Label>
+        <Icon sf={{ default: "cross.case", selected: "cross.case.fill" }} />
+        <Label>Hospitals</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -60,7 +55,7 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: "#F97316",
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         tabBarStyle: {
@@ -101,42 +96,38 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="alert"
+        name="volunteer"
         options={{
-          title: "Alert",
+          title: "Explore",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView
-                name="exclamationmark.triangle"
-                tintColor={color}
-                size={24}
-              />
+              <SymbolView name="magnifyingglass" tintColor={color} size={24} />
             ) : (
-              <Feather name="alert-triangle" size={22} color={color} />
+              <Feather name="search" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
-        name="volunteer"
+        name="alert"
         options={{
-          title: "Volunteer",
+          title: "Post",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="person.2" tintColor={color} size={24} />
+              <SymbolView name="plus.circle" tintColor={color} size={24} />
             ) : (
-              <Feather name="users" size={22} color={color} />
+              <Feather name="plus-circle" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="donate"
         options={{
-          title: "Donate",
+          title: "Hospitals",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="heart" tintColor={color} size={24} />
+              <SymbolView name="cross.case" tintColor={color} size={24} />
             ) : (
-              <Feather name="heart" size={22} color={color} />
+              <Feather name="activity" size={22} color={color} />
             ),
         }}
       />

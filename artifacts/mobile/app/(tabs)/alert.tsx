@@ -1,5 +1,6 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
 import {
   Alert,
@@ -13,90 +14,140 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { CaseType, UrgencyLevel, useApp } from "@/contexts/AppContext";
+import { HelpCategory, HelpType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-const URGENCY_OPTIONS: {
-  value: UrgencyLevel;
-  label: string;
-  desc: string;
-  color: string;
-}[] = [
-  {
-    value: "critical",
-    label: "Critical",
-    desc: "Life at immediate risk",
-    color: "#DC2626",
-  },
-  {
-    value: "high",
-    label: "High",
-    desc: "Urgent, hours to act",
-    color: "#F97316",
-  },
-  {
-    value: "medium",
-    label: "Medium",
-    desc: "Needs help within a day",
-    color: "#F59E0B",
-  },
-  {
-    value: "low",
-    label: "Low",
-    desc: "Can wait a few days",
-    color: "#16A34A",
-  },
+const CATEGORIES: { key: HelpCategory; label: string; hindi: string; emoji: string }[] = [
+  { key: "food", label: "Food", hindi: "भोजन", emoji: "🍲" },
+  { key: "medical", label: "Medical", hindi: "चिकित्सा", emoji: "🏥" },
+  { key: "job", label: "Job", hindi: "रोजगार", emoji: "💼" },
+  { key: "animal", label: "Animal", hindi: "पशु", emoji: "🐾" },
+  { key: "education", label: "Education", hindi: "शिक्षा", emoji: "📚" },
 ];
 
-const VOLUNTEER_COUNTS = [1, 2, 3, 5, 10];
-
-export default function AlertScreen() {
+export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addCase, profile } = useApp();
-  const [type, setType] = useState<CaseType>("human");
-  const [urgency, setUrgency] = useState<UrgencyLevel>("high");
+  const { addRequest, profile } = useApp();
+  const [step, setStep] = useState<"choose" | "form">("choose");
+  const [helpType, setHelpType] = useState<HelpType>("need_help");
+  const [category, setCategory] = useState<HelpCategory>("medical");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
-  const [volunteersNeeded, setVolunteersNeeded] = useState(2);
-  const [donationsGoal, setDonationsGoal] = useState("");
+  const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const topPad =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+
+  const handleChoose = (type: HelpType) => {
+    setHelpType(type);
+    setStep("form");
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim() || !location.trim()) {
-      Alert.alert(
-        "Missing Information",
-        "Please fill in title, description, and location."
-      );
+      Alert.alert("Missing Info", "Please fill title, description and location.");
       return;
     }
     setSubmitting(true);
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addCase({
-      type,
+    addRequest({
+      category,
+      helpType,
       title: title.trim(),
       description: description.trim(),
       location: location.trim(),
-      urgency,
-      reportedBy: profile.name || "Anonymous",
-      volunteersNeeded,
-      donationsGoal: donationsGoal ? parseInt(donationsGoal, 10) : undefined,
+      postedBy: profile.name || "Anonymous",
+      contactPhone: phone.trim() || undefined,
     });
     setTitle("");
     setDescription("");
     setLocation("");
-    setDonationsGoal("");
-    setVolunteersNeeded(2);
+    setPhone("");
+    setStep("choose");
     setSubmitting(false);
     Alert.alert(
-      "Alert Posted",
-      "Your emergency alert has been posted. The community has been notified."
+      "Posted! 🙏",
+      helpType === "need_help"
+        ? "Your request has been posted. Someone will reach out soon."
+        : "Your offer to help has been posted. People in need will contact you."
     );
   };
+
+  if (step === "choose") {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View
+          style={[
+            styles.header,
+            {
+              paddingTop: topPad + 12,
+              backgroundColor: colors.background,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            मदद करें / Help
+          </Text>
+          <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+            Choose how you want to participate
+          </Text>
+        </View>
+
+        <View style={styles.chooseContent}>
+          <Text style={[styles.chooseQuestion, { color: colors.foreground }]}>
+            What would you like to do?
+          </Text>
+
+          <TouchableOpacity
+            style={styles.chooseCardNeed}
+            onPress={() => handleChoose("need_help")}
+          >
+            <LinearGradient
+              colors={["#1E3A5F", "#2D5A8E"]}
+              style={styles.chooseCardGrad}
+            >
+              <View style={styles.chooseCardDot}>
+                <View style={[styles.dot, { backgroundColor: "#EF4444" }]} />
+              </View>
+              <Text style={styles.chooseCardTitle}>मदद चाहिए</Text>
+              <Text style={styles.chooseCardSub}>(Request Help)</Text>
+              <Text style={styles.chooseCardDesc}>
+                I need help with food, medical, job, animals or education
+              </Text>
+              <View style={styles.chooseArrow}>
+                <Feather name="arrow-right" size={20} color="#fff" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.chooseCardGive}
+            onPress={() => handleChoose("give_help")}
+          >
+            <LinearGradient
+              colors={["#EA580C", "#F97316"]}
+              style={styles.chooseCardGrad}
+            >
+              <View style={styles.chooseCardDot}>
+                <View style={[styles.dot, { backgroundColor: "#22C55E" }]} />
+              </View>
+              <Text style={styles.chooseCardTitle}>मदद करना है</Text>
+              <Text style={styles.chooseCardSub}>(Give Help)</Text>
+              <Text style={styles.chooseCardDesc}>
+                I want to offer help — food, medical support, job, or education
+              </Text>
+              <View style={styles.chooseArrow}>
+                <Feather name="arrow-right" size={20} color="#fff" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -110,150 +161,67 @@ export default function AlertScreen() {
           },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-          Report Emergency
-        </Text>
-        <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-          Help arrives faster with clear details
-        </Text>
+        <TouchableOpacity onPress={() => setStep("choose")} style={styles.backBtn}>
+          <Feather name="arrow-left" size={20} color={colors.foreground} />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            {helpType === "need_help" ? "मदद चाहिए" : "मदद करना है"}
+          </Text>
+          <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+            {helpType === "need_help" ? "Request Help" : "Give Help"}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
         contentContainerStyle={[
-          styles.scroll,
+          styles.formScroll,
           { paddingBottom: insets.bottom + 100 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Emergency Type
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+          Category / श्रेणी
         </Text>
-        <View style={styles.typeRow}>
-          <TouchableOpacity
-            style={[
-              styles.typeBtn,
-              {
-                borderColor:
-                  type === "human" ? "#2563EB" : colors.border,
-                backgroundColor:
-                  type === "human" ? "#EFF6FF" : colors.card,
-              },
-            ]}
-            onPress={() => setType("human")}
-          >
-            <Feather
-              name="user"
-              size={26}
-              color={type === "human" ? "#2563EB" : colors.mutedForeground}
-            />
-            <Text
-              style={[
-                styles.typeBtnLabel,
-                {
-                  color:
-                    type === "human" ? "#2563EB" : colors.foreground,
-                },
-              ]}
-            >
-              Human
-            </Text>
-            <Text
-              style={[styles.typeBtnSub, { color: colors.mutedForeground }]}
-            >
-              Person in crisis
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.typeBtn,
-              {
-                borderColor:
-                  type === "animal" ? "#059669" : colors.border,
-                backgroundColor:
-                  type === "animal" ? "#ECFDF5" : colors.card,
-              },
-            ]}
-            onPress={() => setType("animal")}
-          >
-            <MaterialCommunityIcons
-              name="paw"
-              size={26}
-              color={type === "animal" ? "#059669" : colors.mutedForeground}
-            />
-            <Text
-              style={[
-                styles.typeBtnLabel,
-                {
-                  color:
-                    type === "animal" ? "#059669" : colors.foreground,
-                },
-              ]}
-            >
-              Animal
-            </Text>
-            <Text
-              style={[styles.typeBtnSub, { color: colors.mutedForeground }]}
-            >
-              Animal rescue
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Urgency Level
-        </Text>
-        <View style={styles.urgencyGrid}>
-          {URGENCY_OPTIONS.map((opt) => (
+        <View style={styles.catGrid}>
+          {CATEGORIES.map((cat) => (
             <TouchableOpacity
-              key={opt.value}
+              key={cat.key}
               style={[
-                styles.urgencyBtn,
+                styles.catOption,
                 {
-                  borderColor:
-                    urgency === opt.value ? opt.color : colors.border,
                   backgroundColor:
-                    urgency === opt.value
-                      ? opt.color + "12"
-                      : colors.card,
+                    category === cat.key ? "#FFF7ED" : colors.card,
+                  borderColor:
+                    category === cat.key ? "#F97316" : colors.border,
                 },
               ]}
-              onPress={() => setUrgency(opt.value)}
+              onPress={() => setCategory(cat.key)}
             >
-              <View
-                style={[styles.urgencyDot, { backgroundColor: opt.color }]}
-              />
-              <View style={styles.urgencyTextWrap}>
-                <Text
-                  style={[
-                    styles.urgencyBtnLabel,
-                    {
-                      color:
-                        urgency === opt.value
-                          ? opt.color
-                          : colors.foreground,
-                    },
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-                <Text
-                  style={[
-                    styles.urgencyBtnSub,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  {opt.desc}
-                </Text>
-              </View>
-              {urgency === opt.value && (
-                <Feather name="check" size={16} color={opt.color} />
-              )}
+              <Text style={styles.catOptionEmoji}>{cat.emoji}</Text>
+              <Text
+                style={[
+                  styles.catOptionHindi,
+                  {
+                    color:
+                      category === cat.key ? "#F97316" : colors.foreground,
+                  },
+                ]}
+              >
+                {cat.hindi}
+              </Text>
+              <Text
+                style={[styles.catOptionLabel, { color: colors.mutedForeground }]}
+              >
+                {cat.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
           Title *
         </Text>
         <TextInput
@@ -265,14 +233,14 @@ export default function AlertScreen() {
               color: colors.foreground,
             },
           ]}
-          placeholder="Brief description of the situation"
+          placeholder="Brief title of your request..."
           placeholderTextColor={colors.mutedForeground}
           value={title}
           onChangeText={setTitle}
           maxLength={80}
         />
 
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
           Description *
         </Text>
         <TextInput
@@ -285,7 +253,7 @@ export default function AlertScreen() {
               color: colors.foreground,
             },
           ]}
-          placeholder="Provide details — what happened, what's needed..."
+          placeholder="Describe your situation in detail..."
           placeholderTextColor={colors.mutedForeground}
           value={description}
           onChangeText={setDescription}
@@ -294,90 +262,42 @@ export default function AlertScreen() {
           textAlignVertical="top"
         />
 
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
           Location *
         </Text>
         <View
           style={[
             styles.inputRow,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Feather
-            name="map-pin"
-            size={16}
-            color={colors.mutedForeground}
-            style={styles.inputIcon}
-          />
+          <Feather name="map-pin" size={16} color="#F97316" />
           <TextInput
             style={[styles.inputInRow, { color: colors.foreground }]}
-            placeholder="Nearest landmark or address"
+            placeholder="Area or landmark..."
             placeholderTextColor={colors.mutedForeground}
             value={location}
             onChangeText={setLocation}
           />
         </View>
 
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Volunteers Needed
-        </Text>
-        <View style={styles.counterRow}>
-          {VOLUNTEER_COUNTS.map((n) => (
-            <TouchableOpacity
-              key={n}
-              style={[
-                styles.counterBtn,
-                {
-                  backgroundColor:
-                    volunteersNeeded === n ? colors.primary : colors.muted,
-                },
-              ]}
-              onPress={() => setVolunteersNeeded(n)}
-            >
-              <Text
-                style={[
-                  styles.counterBtnText,
-                  {
-                    color:
-                      volunteersNeeded === n
-                        ? "#fff"
-                        : colors.mutedForeground,
-                  },
-                ]}
-              >
-                {n}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>
-          Donation Goal (₹) — Optional
+        <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+          Contact Phone (Optional)
         </Text>
         <View
           style={[
             styles.inputRow,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text
-            style={[styles.currencySymbol, { color: colors.mutedForeground }]}
-          >
-            ₹
-          </Text>
+          <Feather name="phone" size={16} color={colors.mutedForeground} />
           <TextInput
             style={[styles.inputInRow, { color: colors.foreground }]}
-            placeholder="Leave blank if donations not needed"
+            placeholder="+91 98765 43210"
             placeholderTextColor={colors.mutedForeground}
-            value={donationsGoal}
-            onChangeText={setDonationsGoal}
-            keyboardType="numeric"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
           />
         </View>
 
@@ -385,17 +305,22 @@ export default function AlertScreen() {
           style={[
             styles.submitBtn,
             {
-              backgroundColor: colors.primary,
+              backgroundColor:
+                helpType === "need_help" ? "#1E3A5F" : "#F97316",
               opacity: submitting ? 0.7 : 1,
             },
           ]}
           onPress={handleSubmit}
           disabled={submitting}
         >
-          <Feather name="alert-triangle" size={18} color="#fff" />
           <Text style={styles.submitBtnText}>
-            {submitting ? "Posting..." : "Post Emergency Alert"}
+            {submitting
+              ? "Posting..."
+              : helpType === "need_help"
+              ? "Post Request"
+              : "Post Offer"}
           </Text>
+          <Feather name="send" size={17} color="#fff" />
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -405,23 +330,55 @@ export default function AlertScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 14,
     borderBottomWidth: 1,
+    gap: 12,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: { flex: 1 },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
+  headerSub: { fontSize: 12, marginTop: 1 },
+
+  chooseContent: { flex: 1, paddingHorizontal: 20, paddingTop: 24, gap: 16 },
+  chooseQuestion: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
+  chooseCardNeed: { borderRadius: 16, overflow: "hidden" },
+  chooseCardGive: { borderRadius: 16, overflow: "hidden" },
+  chooseCardGrad: { padding: 24, minHeight: 140 },
+  chooseCardDot: { marginBottom: 10 },
+  dot: { width: 10, height: 10, borderRadius: 100 },
+  chooseCardTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#fff",
     marginBottom: 2,
   },
-  headerSub: {
+  chooseCardSub: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    marginBottom: 10,
+  },
+  chooseCardDesc: {
     fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    lineHeight: 18,
   },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  chooseArrow: {
+    position: "absolute",
+    right: 20,
+    top: "50%",
   },
-  sectionLabel: {
+
+  formScroll: { paddingHorizontal: 16, paddingTop: 20 },
+  fieldLabel: {
     fontSize: 12,
     fontWeight: "600",
     textTransform: "uppercase",
@@ -429,56 +386,24 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 4,
   },
-  typeRow: {
+  catGrid: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 20,
-  },
-  typeBtn: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    gap: 4,
-  },
-  typeBtnLabel: {
-    fontSize: 15,
-    fontWeight: "600",
-    marginTop: 4,
-  },
-  typeBtnSub: {
-    fontSize: 11,
-  },
-  urgencyGrid: {
+    flexWrap: "wrap",
     gap: 8,
     marginBottom: 20,
   },
-  urgencyBtn: {
-    flexDirection: "row",
+  catOption: {
     alignItems: "center",
-    padding: 12,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
     borderWidth: 1.5,
-    gap: 10,
+    minWidth: 60,
+    gap: 3,
   },
-  urgencyDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 100,
-  },
-  urgencyTextWrap: {
-    flex: 1,
-  },
-  urgencyBtnLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  urgencyBtnSub: {
-    fontSize: 11,
-    marginTop: 1,
-  },
+  catOptionEmoji: { fontSize: 22 },
+  catOptionHindi: { fontSize: 12, fontWeight: "700" },
+  catOptionLabel: { fontSize: 10 },
   input: {
     borderWidth: 1,
     borderRadius: 10,
@@ -487,10 +412,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 20,
   },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
-  },
+  textArea: { height: 100, paddingTop: 12 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -498,35 +420,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: 20,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  currencySymbol: {
-    fontSize: 15,
-    marginRight: 6,
-  },
-  inputInRow: {
-    flex: 1,
-    fontSize: 14,
-  },
-  counterRow: {
-    flexDirection: "row",
     gap: 10,
     marginBottom: 20,
   },
-  counterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  counterBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  inputInRow: { flex: 1, fontSize: 14 },
   submitBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -534,11 +431,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    marginTop: 8,
+    marginTop: 4,
   },
-  submitBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
+  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

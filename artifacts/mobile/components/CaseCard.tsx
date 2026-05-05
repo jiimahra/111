@@ -1,22 +1,16 @@
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { EmergencyCase } from "@/contexts/AppContext";
+import { HelpRequest } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 
-const URGENCY_COLORS: Record<string, string> = {
-  critical: "#DC2626",
-  high: "#F97316",
-  medium: "#F59E0B",
-  low: "#16A34A",
-};
-
-const URGENCY_LABELS: Record<string, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
+const CATEGORY_EMOJI: Record<string, string> = {
+  food: "🍲",
+  medical: "🏥",
+  job: "💼",
+  animal: "🐾",
+  education: "📚",
 };
 
 export function timeAgo(timestamp: number): string {
@@ -30,77 +24,61 @@ export function timeAgo(timestamp: number): string {
 }
 
 interface CaseCardProps {
-  item: EmergencyCase;
+  item: HelpRequest;
   onPress?: () => void;
-  onRespond?: () => void;
-  onDonate?: () => void;
-  showActions?: boolean;
 }
 
-export function CaseCard({
-  item,
-  onPress,
-  onRespond,
-  onDonate,
-  showActions = false,
-}: CaseCardProps) {
+export function CaseCard({ item, onPress }: CaseCardProps) {
   const colors = useColors();
-  const urgencyColor = URGENCY_COLORS[item.urgency];
-  const isAnimal = item.type === "animal";
-  const hasDonation = item.donationsGoal != null && item.donationsGoal > 0;
-  const donationPercent = hasDonation
-    ? Math.min((item.donationsReceived / item.donationsGoal!) * 100, 100)
-    : 0;
+  const isNeedHelp = item.helpType === "need_help";
+  const emoji = CATEGORY_EMOJI[item.category] ?? "🙏";
 
   return (
     <TouchableOpacity
       style={[
         styles.card,
-        {
-          backgroundColor: colors.card,
-          borderColor: colors.border,
-          borderLeftColor: urgencyColor,
-        },
+        { backgroundColor: colors.card, borderColor: colors.border },
       ]}
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <View style={styles.header}>
+      <View style={styles.topRow}>
         <View
           style={[
-            styles.typeIconWrap,
-            { backgroundColor: isAnimal ? "#ECFDF5" : "#EFF6FF" },
+            styles.catBadge,
+            { backgroundColor: isNeedHelp ? "#FEF3C7" : "#DCFCE7" },
           ]}
         >
-          {isAnimal ? (
-            <MaterialCommunityIcons name="paw" size={16} color="#059669" />
-          ) : (
-            <Feather name="user" size={16} color="#2563EB" />
-          )}
-        </View>
-        <View style={styles.titleWrap}>
+          <Text style={styles.catEmoji}>{emoji}</Text>
           <Text
-            style={[styles.title, { color: colors.foreground }]}
-            numberOfLines={1}
+            style={[
+              styles.catText,
+              { color: isNeedHelp ? "#92400E" : "#166534" },
+            ]}
           >
-            {item.title}
+            {item.category}
           </Text>
         </View>
         <View
           style={[
-            styles.urgencyBadge,
-            { backgroundColor: urgencyColor + "18" },
+            styles.typeBadge,
+            { backgroundColor: isNeedHelp ? "#FEE2E2" : "#DCFCE7" },
           ]}
         >
-          <View
-            style={[styles.urgencyDot, { backgroundColor: urgencyColor }]}
-          />
-          <Text style={[styles.urgencyLabel, { color: urgencyColor }]}>
-            {URGENCY_LABELS[item.urgency]}
+          <Text
+            style={[
+              styles.typeText,
+              { color: isNeedHelp ? "#DC2626" : "#16A34A" },
+            ]}
+          >
+            {isNeedHelp ? "● Need Help" : "● Giving Help"}
           </Text>
         </View>
       </View>
 
+      <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+        {item.title}
+      </Text>
       <Text
         style={[styles.description, { color: colors.mutedForeground }]}
         numberOfLines={2}
@@ -109,170 +87,51 @@ export function CaseCard({
       </Text>
 
       <View style={styles.meta}>
-        <View style={styles.metaItem}>
-          <Feather name="map-pin" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-            {item.location}
-          </Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Feather name="clock" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-            {timeAgo(item.timestamp)}
-          </Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Feather name="users" size={12} color={colors.mutedForeground} />
-          <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-            {item.volunteersResponded}/{item.volunteersNeeded}
-          </Text>
-        </View>
+        <Feather name="map-pin" size={12} color={colors.mutedForeground} />
+        <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+          {item.location}
+        </Text>
+        <Text style={[styles.metaDot, { color: colors.mutedForeground }]}>·</Text>
+        <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
+          {timeAgo(item.timestamp)}
+        </Text>
       </View>
-
-      {hasDonation && (
-        <View style={styles.donationRow}>
-          <View style={[styles.donationBar, { backgroundColor: colors.muted }]}>
-            <View
-              style={[
-                styles.donationFill,
-                {
-                  width: `${donationPercent}%` as `${number}%`,
-                  backgroundColor: colors.primary,
-                },
-              ]}
-            />
-          </View>
-          <Text style={[styles.donationText, { color: colors.mutedForeground }]}>
-            ₹{item.donationsReceived.toLocaleString()} / ₹
-            {item.donationsGoal!.toLocaleString()}
-          </Text>
-        </View>
-      )}
-
-      {showActions && (
-        <View style={styles.actions}>
-          {onRespond && item.status !== "resolved" && (
-            <TouchableOpacity
-              style={[
-                styles.actionBtn,
-                { backgroundColor: colors.secondary },
-              ]}
-              onPress={onRespond}
-            >
-              <Feather name="check-circle" size={14} color="#fff" />
-              <Text style={styles.actionBtnText}>Respond</Text>
-            </TouchableOpacity>
-          )}
-          {onDonate && hasDonation && (
-            <TouchableOpacity
-              style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-              onPress={onDonate}
-            >
-              <Feather name="heart" size={14} color="#fff" />
-              <Text style={styles.actionBtnText}>Donate</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderLeftWidth: 4,
     padding: 14,
     marginBottom: 12,
   },
-  header: {
+  topRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
     gap: 8,
+    marginBottom: 8,
   },
-  typeIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  titleWrap: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  urgencyBadge: {
+  catBadge: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 100,
-    gap: 4,
   },
-  urgencyDot: {
-    width: 5,
-    height: 5,
+  catEmoji: { fontSize: 11 },
+  catText: { fontSize: 11, fontWeight: "600" },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 100,
   },
-  urgencyLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  description: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  meta: {
-    flexDirection: "row",
-    gap: 12,
-    flexWrap: "wrap",
-  },
-  metaItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  metaText: {
-    fontSize: 11,
-  },
-  donationRow: {
-    marginTop: 10,
-    gap: 4,
-  },
-  donationBar: {
-    height: 5,
-    borderRadius: 100,
-    overflow: "hidden",
-  },
-  donationFill: {
-    height: "100%",
-    borderRadius: 100,
-  },
-  donationText: {
-    fontSize: 11,
-  },
-  actions: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-  },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  actionBtnText: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  typeText: { fontSize: 11, fontWeight: "600" },
+  title: { fontSize: 15, fontWeight: "700", marginBottom: 4, lineHeight: 21 },
+  description: { fontSize: 13, lineHeight: 18, marginBottom: 10 },
+  meta: { flexDirection: "row", alignItems: "center", gap: 4 },
+  metaText: { fontSize: 11 },
+  metaDot: { fontSize: 11 },
 });
