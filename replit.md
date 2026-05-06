@@ -32,6 +32,7 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 
 - Mobile-first, frontend-only — all data persisted via AsyncStorage
 - AppContext manages HelpRequest[] with categories + helpType (need_help/give_help)
+- Auth gate: `components/AuthGate.tsx` wraps `(tabs)/_layout.tsx` — without `profile.name`, only welcome/signup screen is visible. Shows splash loader during AsyncStorage hydration to avoid flash.
 - Design matches saharaapphelp.com exactly: navbar, hero, categories grid, request cards
 - Tab routes kept as original filenames: volunteer=Explore, alert=Post, donate=Hospitals
 - Orange #F97316 primary (matches website), dark navy #1E3A5F for "Request Help" button

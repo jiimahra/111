@@ -16,6 +16,7 @@ import {
   useColorScheme,
 } from "react-native";
 
+import { AuthGate } from "@/components/AuthGate";
 import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
@@ -164,8 +165,9 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
-    return <NativeTabLayout />;
-  }
-  return <ClassicTabLayout />;
+  return (
+    <AuthGate>
+      {isLiquidGlassAvailable() ? <NativeTabLayout /> : <ClassicTabLayout />}
+    </AuthGate>
+  );
 }
