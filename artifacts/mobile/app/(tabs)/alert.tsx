@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HelpCategory, HelpType, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { notifyNewRequest, scheduleLocalNotification } from "@/utils/notifications";
 
 const CATEGORIES: { key: HelpCategory; label: string; hindi: string; emoji: string }[] = [
   { key: "food", label: "Food", hindi: "भोजन", emoji: "🍲" },
@@ -61,6 +62,21 @@ export default function PostScreen() {
       postedBy: profile.name || "Anonymous",
       contactPhone: phone.trim() || undefined,
     });
+
+    void notifyNewRequest({
+      title: title.trim(),
+      category,
+      helpType,
+      location: location.trim(),
+    });
+
+    void scheduleLocalNotification(
+      "Posted! 🙏",
+      helpType === "need_help"
+        ? "Your request has been posted. Someone will reach out soon."
+        : "Your offer to help has been posted. People in need will contact you."
+    );
+
     setTitle("");
     setDescription("");
     setLocation("");
