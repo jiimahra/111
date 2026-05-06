@@ -7,6 +7,15 @@ import { sendResetEmail } from "../lib/mailer";
 
 const router: IRouter = Router();
 
+async function generateUniqueSaharaId(): Promise<string> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const id = String(Math.floor(100000000 + Math.random() * 900000000));
+    const existing = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.saharaId, id)).limit(1);
+    if (existing.length === 0) return id;
+  }
+  throw new Error("Could not generate unique Sahara ID. Please try again.");
+}
+
 const SignupBody = z.object({
   email: z.string().email().toLowerCase().trim(),
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -32,6 +41,7 @@ const ResetBody = z.object({
 
 function publicUser(u: {
   id: string;
+  saharaId: string;
   email: string;
   name: string;
   phone: string | null;
@@ -39,6 +49,7 @@ function publicUser(u: {
 }) {
   return {
     id: u.id,
+    saharaId: u.saharaId,
     email: u.email,
     name: u.name,
     phone: u.phone ?? "",
@@ -58,10 +69,11 @@ router.post("/auth/signup", async (req, res) => {
     return res.status(409).json({ error: "Account with this email already exists. Please login." });
   }
 
+  const saharaId = await generateUniqueSaharaId();
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db
     .insert(usersTable)
-    .values({ email, passwordHash, name, phone: phone ?? null, location: location ?? null })
+    .values({ saharaId, email, passwordHash, name, phone: phone ?? null, location: location ?? null })
     .returning();
 
   return res.json({ user: publicUser(user) });

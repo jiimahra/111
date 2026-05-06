@@ -80,7 +80,8 @@ export default function PeopleScreen() {
 
   const filteredUsers = users.filter((u) =>
     u.name.toLowerCase().includes(search.toLowerCase()) ||
-    (u.location ?? "").toLowerCase().includes(search.toLowerCase()),
+    (u.location ?? "").toLowerCase().includes(search.toLowerCase()) ||
+    u.saharaId.includes(search.replace(/-/g, "")),
   );
 
   const tabCount: Record<Tab, number> = {
@@ -240,6 +241,9 @@ function UserCard({ user, busy, onSend, onCancel, onChat }: {
       <Avatar name={user.name} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.cardName}>{user.name}</Text>
+        <Text style={styles.saharaIdBadge}>
+          ID: {user.saharaId.slice(0,3)}-{user.saharaId.slice(3,6)}-{user.saharaId.slice(6)}
+        </Text>
         {user.location ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
             <Feather name="map-pin" size={11} color="#9CA3AF" />
@@ -462,6 +466,7 @@ const styles = StyleSheet.create({
 
   cardName: { fontSize: 15, fontWeight: "700", color: "#111827" },
   cardSub: { fontSize: 12, color: "#9CA3AF" },
+  saharaIdBadge: { fontSize: 11, color: "#059669", fontWeight: "700", marginTop: 1, letterSpacing: 0.5 },
 
   addBtn: {
     flexDirection: "row",

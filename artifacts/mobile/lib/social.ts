@@ -23,6 +23,7 @@ async function req<T>(path: string, options?: RequestInit & { body?: unknown }):
 
 export interface SocialUser {
   id: string;
+  saharaId: string;
   name: string;
   location: string | null;
   requestStatus: "none" | "sent" | "received" | "friends";

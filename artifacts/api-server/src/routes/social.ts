@@ -15,7 +15,7 @@ router.get("/social/users", async (req, res) => {
   if (!userId) return res.status(400).json({ error: "userId required" });
 
   const allUsers = await db
-    .select({ id: usersTable.id, name: usersTable.name, location: usersTable.location })
+    .select({ id: usersTable.id, saharaId: usersTable.saharaId, name: usersTable.name, location: usersTable.location })
     .from(usersTable)
     .where(ne(usersTable.id, userId));
 

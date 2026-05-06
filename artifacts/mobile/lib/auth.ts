@@ -6,6 +6,7 @@ const API_BASE =
 
 export interface AuthUser {
   id: string;
+  saharaId: string;
   email: string;
   name: string;
   phone: string;

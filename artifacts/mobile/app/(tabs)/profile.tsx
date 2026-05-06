@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Clipboard from "expo-clipboard";
 import React, { useState } from "react";
 import { Image } from "react-native";
 import {
@@ -285,6 +286,29 @@ export default function ProfileScreen() {
               <Text style={[styles.profileSub, { color: colors.mutedForeground }]}>{profile.email}</Text>
             ) : null}
             <Text style={[styles.profileSub, { color: colors.mutedForeground }]}>📍 {profile.location}</Text>
+
+            {/* Sahara ID Card */}
+            {profile.saharaId ? (
+              <TouchableOpacity
+                style={styles.saharaIdCard}
+                onPress={() => {
+                  Clipboard.setStringAsync(profile.saharaId);
+                  Alert.alert("Copied!", `Sahara ID ${profile.saharaId} copied to clipboard.`);
+                }}
+                activeOpacity={0.75}
+              >
+                <View style={styles.saharaIdLeft}>
+                  <Text style={styles.saharaIdLabel}>Sahara ID</Text>
+                  <Text style={styles.saharaIdValue}>
+                    {profile.saharaId.slice(0, 3)}-{profile.saharaId.slice(3, 6)}-{profile.saharaId.slice(6)}
+                  </Text>
+                </View>
+                <View style={styles.saharaIdCopyBtn}>
+                  <Feather name="copy" size={14} color="#059669" />
+                  <Text style={styles.saharaIdCopyText}>Copy</Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
           </>
         )}
       </View>
@@ -479,6 +503,25 @@ const styles = StyleSheet.create({
   avatarInitial: { fontSize: 32, fontWeight: "800", color: "#fff" },
   profileName: { fontSize: 20, fontWeight: "700" },
   profileSub: { fontSize: 13 },
+
+  saharaIdCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minWidth: 220,
+  },
+  saharaIdLeft: { gap: 2 },
+  saharaIdLabel: { fontSize: 10, fontWeight: "700", color: "#065F46", letterSpacing: 1, textTransform: "uppercase" },
+  saharaIdValue: { fontSize: 20, fontWeight: "800", color: "#064E3B", letterSpacing: 2 },
+  saharaIdCopyBtn: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#fff", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  saharaIdCopyText: { fontSize: 12, fontWeight: "700", color: "#059669" },
   formSection: { paddingHorizontal: 16, paddingBottom: 8 },
 
   statsRow: { flexDirection: "row", marginHorizontal: 16, gap: 12, marginBottom: 24 },

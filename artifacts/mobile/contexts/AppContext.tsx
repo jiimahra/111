@@ -26,6 +26,8 @@ export interface HelpRequest {
 }
 
 export interface UserProfile {
+  id: string;
+  saharaId: string;
   name: string;
   phone: string;
   email: string;
@@ -42,7 +44,7 @@ interface AppContextType {
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  setAuthedProfile: (user: { name: string; email: string; phone: string; location: string }) => void;
+  setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string }) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -129,6 +131,8 @@ const SEED_REQUESTS: HelpRequest[] = [
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
+  id: "",
+  saharaId: "",
   name: "",
   phone: "",
   email: "",
@@ -236,8 +240,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setAuthedProfile = useCallback(
-    (user: { name: string; email: string; phone: string; location: string }) => {
+    (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string }) => {
       const newProfile: UserProfile = {
+        id: user.id,
+        saharaId: user.saharaId,
         name: user.name,
         email: user.email,
         phone: user.phone,
