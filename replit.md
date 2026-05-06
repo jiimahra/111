@@ -8,6 +8,7 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 - `pnpm --filter @workspace/mobile run dev` — run mobile app locally
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 - `pnpm --filter @workspace/db run push` — push DB schema (dev only)
+- `pnpm run typecheck:libs` — rebuild composite libs (needed after schema changes)
 
 ## Stack
 
@@ -22,29 +23,34 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 ## Where things live
 
 - Mobile app: `artifacts/mobile/`
-- App screens: `artifacts/mobile/app/(tabs)/` — index, volunteer (explore), alert (post), donate (hospitals), assist (AI), profile
+- App screens: `artifacts/mobile/app/(tabs)/` — index, volunteer, alert, donate, assist, people, profile
+- Chat screen: `artifacts/mobile/app/chat/[userId].tsx`
+- Social API client: `artifacts/mobile/lib/social.ts`
+- Auth API client: `artifacts/mobile/lib/auth.ts`
 - Shared context: `artifacts/mobile/contexts/AppContext.tsx`
-- Card component: `artifacts/mobile/components/CaseCard.tsx`
-- Brand colors: `artifacts/mobile/constants/colors.ts`
-- API server: `artifacts/api-server/`
+- Brand colors: `artifacts/mobile/constants/colors.ts` (green: #059669, dark: #064E3B)
+- API server: `artifacts/api-server/src/routes/` — auth, social, ai, health, notifications
+- DB schema: `lib/db/src/schema/` — users, social (friend_requests + messages)
 
 ## Architecture decisions
 
-- Mobile-first, frontend-only — all data persisted via AsyncStorage
-- AppContext manages HelpRequest[] with categories + helpType (need_help/give_help)
-- Auth gate: `components/AuthGate.tsx` wraps `(tabs)/_layout.tsx` — without `profile.name`, only Login/Signup/Forgot/Reset screens visible. Shows splash loader during AsyncStorage hydration.
-- Real auth: API server has `/api/auth/{signup,login,forgot-password,reset-password}` backed by Postgres `users` table (bcrypt password hashes, 6-digit reset codes, 15-min expiry). Reset emails sent via Gmail integration from saharaapphelp@gmail.com (`@replit/connectors-sdk` proxy). Mobile API helper: `lib/auth.ts`. After successful auth, profile is saved via `setAuthedProfile` and persists in AsyncStorage.
-- Design matches saharaapphelp.com exactly: navbar, hero, categories grid, request cards
-- Tab routes kept as original filenames: volunteer=Explore, alert=Post, donate=Hospitals
-- Orange #F97316 primary (matches website), dark navy #1E3A5F for "Request Help" button
+- Mobile-first — help requests persisted via AsyncStorage; social/auth data in Postgres
+- AppContext manages HelpRequest[] + authed profile (AsyncStorage keys: `@sahara/requests_v2`, `@sahara/profile_v2`)
+- Auth gate: `components/AuthGate.tsx` (FB/IG-style design) wraps `(tabs)/_layout.tsx`
+- Real auth: `/api/auth/{signup,login,forgot-password,reset-password}` — bcrypt, 6-digit reset codes (15-min expiry), Gmail reset emails via `@replit/connectors-sdk`
+- Social system: `/api/social/{users,friend-request,friend-requests,friends,messages}` — Postgres-backed friend requests + 1-on-1 messaging with 3s polling
+- Input components defined at module scope (NOT inside render functions) to prevent keyboard dismiss bug
 
-## Product (matches saharaapphelp.com)
+## Product
 
-- **Home**: Sahara logo navbar, desert-tone hero with "Together we make a difference", search bar, two CTAs (मदद चाहिए / मदद करना है), categories grid (भोजन/चिकित्सा/रोजगार/पशु/शिक्षा), recent requests
-- **Explore**: Browse all requests with category + help-type filters
-- **Post**: Choose "मदद चाहिए" or "मदद करना है" → form with category, title, description, location, phone
-- **Hospitals**: Nearby hospitals & vet clinics with location permission flow (matches website's Nearby Hospitals page)
-- **Profile**: Login/signup form matching website's login page; shows stats + my requests when logged in
+- **Home**: Hero, search, CTAs (मदद चाहिए / मदद करना है), categories, recent requests
+- **Explore**: Browse/filter all requests
+- **Post**: Post need-help or give-help request
+- **Hospitals**: Nearby hospitals/vet clinics with location
+- **AI Help**: AI assistant chat
+- **Community** (people tab): Browse users → send/cancel friend requests | incoming requests (accept/decline) | friends list with unread count
+- **Chat**: 1-on-1 real-time messaging with 3s polling, read receipts
+- **Profile**: Auth (login/signup/forgot/reset) + stats + my requests
 
 ## User preferences
 
@@ -52,12 +58,15 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 - Reference website: saharaapphelp.com
 - Location: Ajmer-focused seed data
 - Language: Hindi branding, English UI
+- Green theme: #059669 primary, #064E3B dark, #1E3A5F navy accent
 
 ## Gotchas
 
-- AsyncStorage keys: `@sahara/requests_v2`, `@sahara/profile_v2` (v2 to avoid old data conflict)
+- AsyncStorage keys: `@sahara/requests_v2`, `@sahara/profile_v2`
 - Do not use `uuid` package — use `Date.now().toString() + Math.random().toString(36).substring(2,7)` for IDs
-- Tab filenames are kept original (volunteer, alert, donate) but display as Explore, Post, Hospitals
+- Tab filenames original (volunteer, alert, donate) but display as Explore, Post, Hospitals
+- Pre-existing TS errors in `assist.tsx` (EncodingType) and `useColors.ts` (radius) — not blocking
+- After DB schema changes: run `pnpm run typecheck:libs` THEN `pnpm --filter @workspace/db run push`
 
 ## Pointers
 
