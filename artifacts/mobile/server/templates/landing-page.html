@@ -1,460 +1,522 @@
 <!doctype html>
-<html>
+<html lang="hi">
   <head>
-    <title>APP_NAME_PLACEHOLDER</title>
+    <title>सहारा - Connecting Hearts, Empowering Communities</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='180' height='180' rx='36' fill='%23FF3C00'/%3E%3C/svg%3E" />
+    <meta name="description" content="सहारा - भारत का समुदायिक मदद मंच। जरूरतमंदों को मददगारों से जोड़ता है। खाना, चिकित्सा, रोजगार, पशु और शिक्षा - हर क्षेत्र में सहारा।" />
+    <meta name="keywords" content="sahara, सहारा, community help, india, madad, help, food, medical, animal, education, job" />
+    <meta property="og:title" content="सहारा - Connecting Hearts, Empowering Communities" />
+    <meta property="og:description" content="भारत का समुदायिक मदद मंच - कोई अकेला नहीं" />
+    <meta property="og:url" content="https://www.saharaapphelp.com" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='180' height='180' viewBox='0 0 180 180' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='180' height='180' rx='36' fill='%23059669'/%3E%3Ctext x='90' y='120' text-anchor='middle' font-size='100' fill='white'%3E🤝%3C/text%3E%3C/svg%3E" />
     <style>
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        padding: 32px 20px;
-        text-align: center;
-        background: #fff;
-        color: #222;
-        line-height: 1.5;
-        min-height: 100vh;
+        background: #f0fdf4;
+        color: #111827;
+        line-height: 1.6;
       }
-      .wrapper {
-        max-width: 480px;
-        margin: 0 auto;
+
+      /* NAV */
+      nav {
+        background: #064E3B;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.2);
       }
-      h1 {
+      .nav-logo {
         font-size: 26px;
-        font-weight: 600;
-        margin: 0;
-        color: #111;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: -0.5px;
       }
-      .subtitle {
-        font-size: 15px;
-        color: #666;
-        margin-top: 8px;
-        margin-bottom: 32px;
+      .nav-tagline {
+        font-size: 12px;
+        color: #6EE7B7;
+        margin-top: 1px;
       }
-      .loading {
-        display: none;
-        margin: 60px 0;
+      .nav-cta {
+        background: #059669;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 14px;
+        transition: background 0.2s;
       }
-      .spinner {
-        border: 2px solid #ddd;
-        border-top-color: #333;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        animation: spin 0.8s linear infinite;
-        margin: 20px auto;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .loading-text {
-        font-size: 16px;
-        color: #444;
-      }
-      .content {
-        display: block;
-      }
+      .nav-cta:hover { background: #047857; }
 
-      .steps-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
-
-      .step {
-        padding: 24px;
-        border: 1px solid #ddd;
-        border-radius: 12px;
+      /* HERO */
+      .hero {
+        background: linear-gradient(135deg, #064E3B 0%, #059669 60%, #10B981 100%);
+        color: white;
         text-align: center;
-        background: #fafafa;
+        padding: 80px 24px 100px;
+        position: relative;
+        overflow: hidden;
       }
-      .step-header {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-      .step-number {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #999;
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: -60px; right: -60px;
+        width: 300px; height: 300px;
+        background: rgba(255,255,255,0.05);
         border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 14px;
-        flex-shrink: 0;
-        color: #555;
       }
-      .step-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0;
-        color: #222;
+      .hero::after {
+        content: '';
+        position: absolute;
+        bottom: -80px; left: -40px;
+        width: 250px; height: 250px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
       }
-      .step-description {
-        font-size: 14px;
+      .hero-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 20px;
+        padding: 6px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        backdrop-filter: blur(10px);
+      }
+      .hero h1 {
+        font-size: clamp(48px, 10vw, 80px);
+        font-weight: 900;
+        margin-bottom: 8px;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.2);
+      }
+      .hero-sub {
+        font-size: clamp(18px, 4vw, 24px);
+        font-weight: 600;
         margin-bottom: 16px;
-        color: #666;
+        color: #A7F3D0;
       }
-
-      .store-buttons {
+      .hero p {
+        font-size: clamp(15px, 3vw, 18px);
+        color: rgba(255,255,255,0.85);
+        max-width: 560px;
+        margin: 0 auto 40px;
+      }
+      .hero-btns {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
+        gap: 14px;
         justify-content: center;
         flex-wrap: wrap;
       }
-      .store-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 12px 20px;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        text-decoration: none;
-        color: #333;
+      .btn-primary {
         background: #fff;
-        transition: all 0.15s;
+        color: #059669;
+        padding: 16px 32px;
+        border-radius: 14px;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 16px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
       }
-      .store-button:hover {
-        background: #f5f5f5;
-        border-color: #999;
+      .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.25); }
+      .btn-secondary {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+        padding: 16px 32px;
+        border-radius: 14px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 16px;
+        border: 2px solid rgba(255,255,255,0.4);
+        transition: background 0.2s;
+        backdrop-filter: blur(10px);
       }
-      .store-link {
-        display: inline-flex;
-        align-items: center;
+      .btn-secondary:hover { background: rgba(255,255,255,0.25); }
+
+      /* STATS */
+      .stats {
+        display: flex;
         justify-content: center;
-        gap: 6px;
-        padding: 8px 0;
-        font-size: 13px;
-        font-weight: 400;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-        color: #666;
-        background: none;
-        border: none;
-        transition: color 0.15s;
+        gap: 0;
+        background: #fff;
+        box-shadow: 0 4px 30px rgba(0,0,0,0.08);
+        border-radius: 20px;
+        max-width: 700px;
+        margin: -40px auto 0;
+        position: relative;
+        z-index: 10;
+        overflow: hidden;
       }
-      .store-link:hover {
-        color: #333;
+      .stat {
+        flex: 1;
+        text-align: center;
+        padding: 28px 16px;
+        border-right: 1px solid #F3F4F6;
       }
-      .store-link .store-icon {
-        width: 14px;
-        height: 14px;
+      .stat:last-child { border-right: none; }
+      .stat-num {
+        font-size: 28px;
+        font-weight: 900;
+        color: #059669;
+        display: block;
       }
-      .store-icon {
-        width: 18px;
-        height: 18px;
+      .stat-label {
+        font-size: 12px;
+        color: #6B7280;
+        font-weight: 600;
+        margin-top: 4px;
       }
 
-      .qr-section {
-        background: #333;
-        color: #fff;
-        border-color: #333;
+      /* MISSION */
+      .mission {
+        text-align: center;
+        padding: 80px 24px 40px;
+        max-width: 700px;
+        margin: 0 auto;
       }
-      .qr-section .step-number {
-        border-color: rgba(255, 255, 255, 0.5);
-        color: #fff;
+      .section-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #059669;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin-bottom: 12px;
       }
-      .qr-section .step-title {
-        color: #fff;
+      .mission h2 {
+        font-size: clamp(28px, 5vw, 42px);
+        font-weight: 900;
+        color: #064E3B;
+        margin-bottom: 16px;
       }
-      .qr-section .step-description {
-        color: rgba(255, 255, 255, 0.7);
+      .mission p {
+        font-size: 17px;
+        color: #4B5563;
+        line-height: 1.8;
       }
-      .qr-code {
-        width: 180px;
-        height: 180px;
+
+      /* CATEGORIES */
+      .categories {
+        padding: 40px 24px 80px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .categories h2 {
+        text-align: center;
+        font-size: clamp(24px, 4vw, 36px);
+        font-weight: 900;
+        color: #064E3B;
+        margin-bottom: 40px;
+      }
+      .cat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+      }
+      .cat-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 28px 20px;
+        text-align: center;
+        box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+        border: 2px solid transparent;
+        transition: border-color 0.2s, transform 0.2s;
+      }
+      .cat-card:hover { border-color: #059669; transform: translateY(-4px); }
+      .cat-emoji { font-size: 40px; display: block; margin-bottom: 12px; }
+      .cat-name { font-size: 15px; font-weight: 800; color: #064E3B; }
+      .cat-desc { font-size: 12px; color: #9CA3AF; margin-top: 4px; }
+
+      /* HOW IT WORKS */
+      .how {
+        background: linear-gradient(135deg, #064E3B, #059669);
+        color: white;
+        padding: 80px 24px;
+        text-align: center;
+      }
+      .how h2 {
+        font-size: clamp(24px, 4vw, 36px);
+        font-weight: 900;
+        margin-bottom: 12px;
+      }
+      .how-sub { font-size: 16px; color: #A7F3D0; margin-bottom: 60px; }
+      .how-steps {
+        display: flex;
+        justify-content: center;
+        gap: 32px;
+        flex-wrap: wrap;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      .how-step {
+        flex: 1;
+        min-width: 200px;
+        max-width: 260px;
+      }
+      .how-step-num {
+        width: 56px;
+        height: 56px;
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        font-weight: 900;
         margin: 0 auto 16px;
+      }
+      .how-step h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+      .how-step p { font-size: 14px; color: rgba(255,255,255,0.75); }
+
+      /* FOUNDER */
+      .founder {
         background: #fff;
-        border-radius: 8px;
-        padding: 12px;
+        padding: 80px 24px;
+        text-align: center;
       }
-      .qr-code canvas {
-        width: 100%;
-        height: 100%;
+      .founder-card {
+        max-width: 600px;
+        margin: 0 auto;
+        background: linear-gradient(135deg, #F0FDF4, #DCFCE7);
+        border-radius: 24px;
+        padding: 48px 40px;
+        border: 2px solid #A7F3D0;
       }
-      .open-button {
-        display: inline-block;
-        padding: 12px 24px;
+      .founder-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #059669, #064E3B);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        margin: 0 auto 20px;
+        box-shadow: 0 8px 24px rgba(5,150,105,0.3);
+      }
+      .founder h2 {
+        font-size: clamp(24px, 4vw, 32px);
+        font-weight: 900;
+        color: #064E3B;
+        margin-bottom: 8px;
+      }
+      .founder-title {
         font-size: 14px;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
+        color: #059669;
+        font-weight: 700;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .founder p {
+        font-size: 16px;
+        color: #374151;
+        line-height: 1.8;
+      }
+
+      /* APP CTA */
+      .app-cta {
+        background: #F9FAFB;
+        padding: 80px 24px;
+        text-align: center;
+      }
+      .app-cta h2 {
+        font-size: clamp(24px, 4vw, 36px);
+        font-weight: 900;
+        color: #064E3B;
+        margin-bottom: 12px;
+      }
+      .app-cta p { font-size: 16px; color: #6B7280; margin-bottom: 36px; max-width: 480px; margin-left: auto; margin-right: auto; }
+      .app-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+      .app-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #059669;
+        color: #fff;
+        padding: 16px 28px;
+        border-radius: 14px;
         text-decoration: none;
-        color: #333;
-        background: #fff;
-        transition: opacity 0.15s;
+        font-weight: 700;
+        font-size: 15px;
+        box-shadow: 0 4px 20px rgba(5,150,105,0.3);
+        transition: background 0.2s, transform 0.2s;
       }
-      .open-button:hover {
-        opacity: 0.9;
-      }
+      .app-btn:hover { background: #047857; transform: translateY(-2px); }
+      .app-btn-dark { background: #064E3B; box-shadow: 0 4px 20px rgba(6,78,59,0.3); }
+      .app-btn-dark:hover { background: #065F46; }
+      .qr-hint { font-size: 13px; color: #9CA3AF; }
 
-      /* Desktop styles */
-      @media (min-width: 768px) {
-        body {
-          padding: 48px 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .wrapper {
-          max-width: 720px;
-        }
-        h1 {
-          font-size: 32px;
-          margin-bottom: 10px;
-        }
-        .subtitle {
-          font-size: 16px;
-          margin-bottom: 40px;
-        }
-        .steps-container {
-          flex-direction: row;
-          gap: 20px;
-          align-items: stretch;
-        }
-        .step {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          padding: 28px;
-        }
-        .step-description {
-          flex-grow: 1;
-        }
-        .store-buttons {
-          flex-direction: column;
-          gap: 10px;
-        }
-        .qr-code {
-          width: 200px;
-          height: 200px;
-        }
+      /* FOOTER */
+      footer {
+        background: #064E3B;
+        color: rgba(255,255,255,0.7);
+        text-align: center;
+        padding: 32px 24px;
+        font-size: 13px;
       }
+      footer strong { color: #fff; }
+      footer a { color: #6EE7B7; text-decoration: none; }
 
-      /* Large desktop */
-      @media (min-width: 1024px) {
-        .wrapper {
-          max-width: 800px;
-        }
-        h1 {
-          font-size: 36px;
-        }
-        .steps-container {
-          gap: 28px;
-        }
-        .step {
-          padding: 32px;
-        }
-      }
-
-      /* Dark mode */
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: #0d0d0d;
-          color: #e0e0e0;
-        }
-        h1 {
-          color: #f5f5f5;
-        }
-        .subtitle {
-          color: #999;
-        }
-        .spinner {
-          border-color: #444;
-          border-top-color: #ccc;
-        }
-        .loading-text {
-          color: #aaa;
-        }
-        .step {
-          border-color: #333;
-          background: #1a1a1a;
-        }
-        .step-number {
-          border-color: #666;
-          color: #bbb;
-        }
-        .step-title {
-          color: #f0f0f0;
-        }
-        .step-description {
-          color: #888;
-        }
-        .store-button {
-          border-color: #444;
-          color: #e0e0e0;
-          background: #222;
-        }
-        .store-button:hover {
-          background: #2a2a2a;
-          border-color: #666;
-        }
-        .store-link {
-          color: #888;
-        }
-        .store-link:hover {
-          color: #ccc;
-        }
-        .qr-section {
-          background: #111;
-          border-color: #333;
-        }
-        .qr-section .step-number {
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-        .qr-section .step-description {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .open-button {
-          background: #f0f0f0;
-          color: #111;
-        }
-        .open-button:hover {
-          background: #e0e0e0;
-        }
+      @media (max-width: 600px) {
+        .stats { flex-direction: column; border-radius: 16px; }
+        .stat { border-right: none; border-bottom: 1px solid #F3F4F6; padding: 20px; }
+        .stat:last-child { border-bottom: none; }
+        .how-steps { gap: 24px; }
+        .founder-card { padding: 32px 24px; }
       }
     </style>
   </head>
   <body>
-    <div class="wrapper">
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <div class="loading-text">Opening in Expo Go...</div>
+
+    <!-- NAV -->
+    <nav>
+      <div>
+        <div class="nav-logo">सहारा</div>
+        <div class="nav-tagline">saharaapphelp.com</div>
       </div>
+      <a href="https://humanity-helper--nitinbhaibhai00.replit.app" class="nav-cta">App खोलें →</a>
+    </nav>
 
-      <div class="content" id="content">
-        <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="subtitle">Preview this app on your phone</p>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-badge">🇮🇳 पूरे भारत के लिए</div>
+      <h1>सहारा</h1>
+      <div class="hero-sub">Connecting Hearts. Empowering Communities.</div>
+      <p>कोई अकेला नहीं — चाहे इंसान हो या बेजुबान जानवर। भारत के हर कोने में मदद पहुँचाना हमारा मिशन है।</p>
+      <div class="hero-btns">
+        <a href="https://humanity-helper--nitinbhaibhai00.replit.app" class="btn-primary">🤝 मदद लें या दें</a>
+        <a href="#categories" class="btn-secondary">और जानें ↓</a>
+      </div>
+    </section>
 
-        <div class="steps-container">
-          <div class="step">
-            <div class="step-header">
-              <div class="step-number">1</div>
-              <h2 class="step-title">Download Expo Go</h2>
-            </div>
-            <p class="step-description">
-              Expo Go is a free app to test mobile apps
-            </p>
-            <div class="store-buttons" id="store-buttons">
-              <a
-                id="app-store-btn"
-                href="https://apps.apple.com/app/id982107779"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"
-                  />
-                </svg>
-                App Store
-              </a>
-              <a
-                id="play-store-btn"
-                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
-                  />
-                </svg>
-                Google Play
-              </a>
-            </div>
-          </div>
-
-          <div class="step qr-section">
-            <div class="step-header">
-              <div class="step-number">2</div>
-              <h2 class="step-title">Scan QR Code</h2>
-            </div>
-            <p class="step-description">Use your phone's camera or Expo Go</p>
-            <div class="qr-code" id="qr-code"></div>
-            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
-              >Open in Expo Go</a
-            >
-          </div>
-        </div>
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-num">5</span>
+        <div class="stat-label">Categories</div>
+      </div>
+      <div class="stat">
+        <span class="stat-num">🇮🇳</span>
+        <div class="stat-label">पूरा भारत</div>
+      </div>
+      <div class="stat">
+        <span class="stat-num">Free</span>
+        <div class="stat-label">बिल्कुल मुफ्त</div>
       </div>
     </div>
 
-    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
-    <script>
-      (function () {
-        const ua = navigator.userAgent;
-        const loadingEl = document.getElementById("loading");
-        const contentEl = document.getElementById("content");
+    <!-- MISSION -->
+    <section class="mission">
+      <div class="section-label">हमारा मिशन</div>
+      <h2>कोई अकेला नहीं</h2>
+      <p>
+        सहारा एक ऐसा मंच है जहाँ मदद करने वाले और मदद चाहने वाले लोग एक-दूसरे से मिलते हैं।
+        भोजन से लेकर चिकित्सा, रोजगार से लेकर पशु कल्याण — हर जरूरत के लिए सहारा।
+      </p>
+    </section>
 
-        const isAndroid = /Android/i.test(ua);
-        const isIOS =
-          /iPhone|iPad|iPod/i.test(ua) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    <!-- CATEGORIES -->
+    <section class="categories" id="categories">
+      <h2>किस चीज़ में मदद चाहिए?</h2>
+      <div class="cat-grid">
+        <div class="cat-card">
+          <span class="cat-emoji">🍽️</span>
+          <div class="cat-name">भोजन</div>
+          <div class="cat-desc">Food Help</div>
+        </div>
+        <div class="cat-card">
+          <span class="cat-emoji">🏥</span>
+          <div class="cat-name">चिकित्सा</div>
+          <div class="cat-desc">Medical Help</div>
+        </div>
+        <div class="cat-card">
+          <span class="cat-emoji">💼</span>
+          <div class="cat-name">रोजगार</div>
+          <div class="cat-desc">Job Help</div>
+        </div>
+        <div class="cat-card">
+          <span class="cat-emoji">🐾</span>
+          <div class="cat-name">पशु</div>
+          <div class="cat-desc">Animal Help</div>
+        </div>
+        <div class="cat-card">
+          <span class="cat-emoji">📚</span>
+          <div class="cat-name">शिक्षा</div>
+          <div class="cat-desc">Education</div>
+        </div>
+      </div>
+    </section>
 
-        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
+    <!-- HOW IT WORKS -->
+    <section class="how">
+      <h2>यह कैसे काम करता है?</h2>
+      <div class="how-sub">3 आसान कदम</div>
+      <div class="how-steps">
+        <div class="how-step">
+          <div class="how-step-num">1</div>
+          <h3>Account बनाएं</h3>
+          <p>मुफ्त signup करें — सिर्फ नाम और email चाहिए</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">2</div>
+          <h3>Request करें</h3>
+          <p>मदद चाहिए या देना है — category चुनें और post करें</p>
+        </div>
+        <div class="how-step">
+          <div class="how-step-num">3</div>
+          <h3>जुड़ें</h3>
+          <p>Community से connect हों, chat करें, मदद पहुँचाएं</p>
+        </div>
+      </div>
+    </section>
 
-        // Adjust store buttons based on platform
-        const appStoreBtn = document.getElementById("app-store-btn");
-        const playStoreBtn = document.getElementById("play-store-btn");
-        const storeButtonsContainer = document.getElementById("store-buttons");
+    <!-- FOUNDER -->
+    <section class="founder">
+      <div class="section-label">Founder के बारे में</div>
+      <div class="founder-card">
+        <div class="founder-avatar">🙏</div>
+        <h2>Nitin Mehra</h2>
+        <div class="founder-title">Founder, सहारा App</div>
+        <p>
+          Nitin Mehra उत्तराखंड के नैनीताल जिले के रहने वाले हैं।
+          उन्होंने यह महसूस किया कि समाज में मदद करने वाले और मदद चाहने वाले
+          लोग हैं, लेकिन उनके बीच कोई सही जोड़ने वाला मंच नहीं है।
+          इसी सोच से उन्होंने सहारा की नींव रखी —
+          <strong>ताकि हर जरूरतमंद को सहारा मिल सके।</strong>
+        </p>
+      </div>
+    </section>
 
-        if (isIOS) {
-          playStoreBtn.className = "store-link";
-          storeButtonsContainer.appendChild(playStoreBtn);
-        } else if (isAndroid) {
-          appStoreBtn.className = "store-link";
-          storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
-        }
+    <!-- APP CTA -->
+    <section class="app-cta">
+      <div class="section-label">अभी शुरू करें</div>
+      <h2>आज ही जुड़ें सहारा से</h2>
+      <p>Free है। Registration आसान है। आपकी मदद किसी की ज़िंदगी बदल सकती है।</p>
+      <div class="app-btns">
+        <a href="https://humanity-helper--nitinbhaibhai00.replit.app" class="app-btn">
+          🤝 App खोलें
+        </a>
+      </div>
+      <div class="qr-hint">Browser में खुलेगा • Mobile & Desktop दोनों पर काम करता है</div>
+    </section>
 
-        const qrCode = new QRCodeStyling({
-          width: 400,
-          height: 400,
-          data: deepLink,
-          dotsOptions: {
-            color: "#333333",
-            type: "rounded",
-          },
-          backgroundOptions: {
-            color: "#ffffff",
-          },
-          cornersSquareOptions: {
-            type: "extra-rounded",
-          },
-          cornersDotOptions: {
-            type: "dot",
-          },
-          qrOptions: {
-            errorCorrectionLevel: "H",
-          },
-        });
+    <!-- FOOTER -->
+    <footer>
+      <p>
+        <strong>सहारा</strong> — Connecting Hearts, Empowering Communities<br/>
+        <a href="mailto:help@saharaapphelp.com">help@saharaapphelp.com</a> &nbsp;|&nbsp;
+        <a href="https://saharaapphelp.com">saharaapphelp.com</a>
+      </p>
+      <p style="margin-top:10px;">© 2025 सहारा • Founded by Nitin Mehra, Nainital, Uttarakhand 🇮🇳</p>
+    </footer>
 
-        qrCode.append(document.getElementById("qr-code"));
-
-        if (isAndroid || isIOS) {
-          loadingEl.style.display = "block";
-          contentEl.style.display = "none";
-          window.location.href = deepLink;
-          setTimeout(function () {
-            loadingEl.style.display = "none";
-            contentEl.style.display = "block";
-          }, 500);
-        }
-      })();
-    </script>
   </body>
 </html>
