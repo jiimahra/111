@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import * as FileSystem from "expo-file-system";
 
@@ -40,6 +41,7 @@ const SUGGESTIONS = [
 
 export default function AssistScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const colors = useColors();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -281,7 +283,7 @@ export default function AssistScreen() {
       )}
 
       {/* Input bar */}
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8, backgroundColor: colors.navBg, borderTopColor: colors.navBorder }]}>
+      <View style={[styles.inputBar, { paddingBottom: tabBarHeight + 8, backgroundColor: colors.navBg, borderTopColor: colors.navBorder }]}>
         {showMic && Platform.OS !== "web" && (
           <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : new Animated.Value(1) }] }}>
             <TouchableOpacity

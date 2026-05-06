@@ -4,7 +4,7 @@ const router: IRouter = Router();
 
 const pushTokens = new Set<string>();
 
-router.post("/api/notifications/register", (req, res) => {
+router.post("/notifications/register", (req, res) => {
   const { token } = req.body as { token?: string };
   if (token && typeof token === "string" && token.startsWith("ExponentPushToken")) {
     pushTokens.add(token);
@@ -14,7 +14,7 @@ router.post("/api/notifications/register", (req, res) => {
   }
 });
 
-router.post("/api/notifications/new-request", async (req, res) => {
+router.post("/notifications/new-request", async (req, res) => {
   const { title, category, helpType, location } = req.body as {
     title?: string;
     category?: string;

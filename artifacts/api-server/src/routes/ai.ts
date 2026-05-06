@@ -31,7 +31,7 @@ You help users:
 Always be warm, helpful, and encouraging. Respond in the same language the user writes in (Hindi or English).
 Keep responses concise and practical. If someone needs urgent medical help, always advise them to call 108 (ambulance) first.`;
 
-router.post("/api/ai/chat", async (req, res) => {
+router.post("/ai/chat", async (req, res) => {
   try {
     const { messages } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -56,7 +56,7 @@ router.post("/api/ai/chat", async (req, res) => {
   }
 });
 
-router.post("/api/ai/transcribe", async (req, res) => {
+router.post("/ai/transcribe", async (req, res) => {
   try {
     const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
     if (!audio) {
