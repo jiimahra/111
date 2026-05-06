@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useState } from "react";
+import { Image } from "react-native";
 import {
   Alert,
   Platform,
@@ -71,12 +72,11 @@ export default function ProfileScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.loginCard}>
-            <LinearGradient
-              colors={["#F97316", "#EF4444"]}
-              style={styles.loginLogoBox}
-            >
-              <Text style={styles.loginLogoText}>स</Text>
-            </LinearGradient>
+            <Image
+              source={require("@/assets/images/sahara-logo.png")}
+              style={styles.loginLogoImg}
+              resizeMode="contain"
+            />
             <Text style={[styles.loginTitle, { color: colors.foreground }]}>
               Welcome back
             </Text>
@@ -401,16 +401,12 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  loginLogoBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
+  loginLogoImg: {
+    width: 160,
+    height: 80,
     alignSelf: "center",
-    marginBottom: 16,
+    marginBottom: 8,
   },
-  loginLogoText: { color: "#fff", fontSize: 26, fontWeight: "800" },
   loginTitle: { fontSize: 22, fontWeight: "700", textAlign: "center", marginBottom: 4 },
   loginSub: { fontSize: 13, textAlign: "center", marginBottom: 20 },
   fieldLabel: {

@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -149,13 +150,11 @@ export default function HomeScreen() {
               ]}
             >
               <View style={styles.navLogo}>
-                <LinearGradient
-                  colors={["#F97316", "#EF4444"]}
-                  style={styles.logoBox}
-                >
-                  <Text style={styles.logoText}>स</Text>
-                </LinearGradient>
-                <Text style={styles.navTitle}>Sahara</Text>
+                <Image
+                  source={require("@/assets/images/sahara-logo.png")}
+                  style={styles.logoImg}
+                  resizeMode="contain"
+                />
               </View>
               <View style={styles.navRight}>
                 <TouchableOpacity style={styles.navBtn}>
@@ -316,14 +315,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F3F4F6",
   },
   navLogo: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  logoImg: { width: 110, height: 36 },
   navTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   navRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   navBtn: {
