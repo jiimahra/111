@@ -146,7 +146,7 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.navbar,
-                { paddingTop: topPad + 8, backgroundColor: "#fff" },
+                { paddingTop: topPad + 8, backgroundColor: colors.navBg, borderBottomColor: colors.navBorder },
               ]}
             >
               <View style={styles.navLogo}>
@@ -157,8 +157,8 @@ export default function HomeScreen() {
                 />
               </View>
               <View style={styles.navRight}>
-                <TouchableOpacity style={styles.navBtn}>
-                  <Feather name="bell" size={20} color="#374151" />
+                <TouchableOpacity style={[styles.navBtn, { backgroundColor: colors.navBtnBg }]}>
+                  <Feather name="bell" size={20} color={colors.navIcon} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.joinBtn}

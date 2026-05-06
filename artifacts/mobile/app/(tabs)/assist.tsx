@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import * as FileSystem from "expo-file-system";
 
+import { useColors } from "@/hooks/useColors";
+
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
   (process.env.EXPO_PUBLIC_DOMAIN
@@ -38,6 +40,7 @@ const SUGGESTIONS = [
 
 export default function AssistScreen() {
   const insets = useSafeAreaInsets();
+  const colors = useColors();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -124,27 +127,21 @@ export default function AssistScreen() {
       await audioRecorder.stop();
       const uri = audioRecorder.uri;
       if (!uri) return;
-
       if (Platform.OS === "web") {
         setInput("Voice input is available on the mobile app.");
         return;
       }
-
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
-
       const res = await fetch(`${API_BASE}/api/ai/transcribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audio: base64, mimeType: "audio/m4a" }),
       });
-
       if (res.ok) {
         const data = (await res.json()) as { transcript: string };
-        if (data.transcript) {
-          setInput(data.transcript);
-        }
+        if (data.transcript) setInput(data.transcript);
       }
     } catch {
     } finally {
@@ -153,11 +150,8 @@ export default function AssistScreen() {
   };
 
   const handleMicPress = () => {
-    if (isRecording) {
-      void stopRecording();
-    } else {
-      void startRecording();
-    }
+    if (isRecording) void stopRecording();
+    else void startRecording();
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
@@ -165,7 +159,7 @@ export default function AssistScreen() {
     return (
       <View style={[styles.msgRow, isUser ? styles.msgRowUser : styles.msgRowBot]}>
         {!isUser && (
-          <View style={styles.botAvatar}>
+          <View style={[styles.botAvatar, { backgroundColor: colors.accent }]}>
             <Image
               source={require("@/assets/images/sahara-logo.png")}
               style={styles.botAvatarImg}
@@ -173,8 +167,21 @@ export default function AssistScreen() {
             />
           </View>
         )}
-        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleBot]}>
-          <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextBot]}>
+        <View
+          style={[
+            styles.bubble,
+            isUser
+              ? { backgroundColor: colors.chatUserBubble }
+              : { backgroundColor: colors.chatBotBubble, borderColor: colors.border, borderWidth: 1 },
+            isUser ? styles.bubbleUser : styles.bubbleBot,
+          ]}
+        >
+          <Text
+            style={[
+              styles.bubbleText,
+              { color: isUser ? "#fff" : colors.chatBotText },
+            ]}
+          >
             {item.content}
           </Text>
         </View>
@@ -186,12 +193,12 @@ export default function AssistScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.navBg, borderBottomColor: colors.navBorder }]}>
         <View style={styles.headerLeft}>
           <Image
             source={require("@/assets/images/sahara-logo.png")}
@@ -199,8 +206,10 @@ export default function AssistScreen() {
             resizeMode="contain"
           />
           <View>
-            <Text style={styles.headerTitle}>AI Assistant</Text>
-            <Text style={styles.headerSub}>Sahara सहायक • Type या बोलकर पूछें</Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>AI Assistant</Text>
+            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
+              Sahara सहायक • Type या बोलकर पूछें
+            </Text>
           </View>
         </View>
         <View style={styles.onlineDot} />
@@ -208,33 +217,39 @@ export default function AssistScreen() {
 
       {/* Recording banner */}
       {isRecording && (
-        <View style={styles.recordingBanner}>
+        <View style={[styles.recordingBanner, { backgroundColor: colors.recordingBg, borderBottomColor: colors.recordingBorder }]}>
           <Animated.View style={[styles.recDot, { transform: [{ scale: pulseAnim }] }]} />
-          <Text style={styles.recordingText}>सुन रहा हूँ… बोलें, फिर mic दबाएं</Text>
+          <Text style={[styles.recordingText, { color: colors.recordingText }]}>
+            सुन रहा हूँ… बोलें, फिर mic दबाएं
+          </Text>
         </View>
       )}
       {transcribing && (
-        <View style={styles.recordingBanner}>
+        <View style={[styles.recordingBanner, { backgroundColor: colors.recordingBg, borderBottomColor: colors.recordingBorder }]}>
           <ActivityIndicator size="small" color="#F97316" />
-          <Text style={styles.recordingText}>आवाज़ समझ रहा हूँ…</Text>
+          <Text style={[styles.recordingText, { color: colors.recordingText }]}>
+            आवाज़ समझ रहा हूँ…
+          </Text>
         </View>
       )}
 
       {/* Messages or Empty State */}
       {messages.length === 0 ? (
         <View style={styles.emptyState}>
-          <View style={styles.emptyIcon}>
+          <View style={[styles.emptyIcon, { backgroundColor: colors.accent }]}>
             <Feather name="message-circle" size={40} color="#F97316" />
           </View>
-          <Text style={styles.emptyTitle}>नमस्ते! मैं Sahara AI हूँ 🙏</Text>
-          <Text style={styles.emptySub}>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+            नमस्ते! मैं Sahara AI हूँ 🙏
+          </Text>
+          <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
             लिखकर या 🎤 बोलकर — किसी भी मदद के बारे में पूछें
           </Text>
           <View style={styles.suggestions}>
             {SUGGESTIONS.map((s) => (
               <TouchableOpacity
                 key={s}
-                style={styles.suggestionChip}
+                style={[styles.suggestionChip, { backgroundColor: colors.card, borderColor: "#F97316" }]}
                 onPress={() => sendMessage(s)}
               >
                 <Text style={styles.suggestionText}>{s}</Text>
@@ -256,20 +271,21 @@ export default function AssistScreen() {
       {/* AI typing indicator */}
       {loading && (
         <View style={styles.typingRow}>
-          <View style={styles.typingBubble}>
+          <View style={[styles.typingBubble, { backgroundColor: colors.card }]}>
             <ActivityIndicator size="small" color="#F97316" />
-            <Text style={styles.typingText}>Sahara AI सोच रहा है...</Text>
+            <Text style={[styles.typingText, { color: colors.mutedForeground }]}>
+              Sahara AI सोच रहा है...
+            </Text>
           </View>
         </View>
       )}
 
       {/* Input bar */}
-      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
-        {/* Mic button (left side when empty) */}
+      <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8, backgroundColor: colors.navBg, borderTopColor: colors.navBorder }]}>
         {showMic && Platform.OS !== "web" && (
           <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : new Animated.Value(1) }] }}>
             <TouchableOpacity
-              style={[styles.micBtn, isRecording && styles.micBtnActive]}
+              style={[styles.micBtn, { borderColor: "#F97316", backgroundColor: isRecording ? "#EF4444" : colors.accent }]}
               onPress={handleMicPress}
               disabled={transcribing}
             >
@@ -279,20 +295,17 @@ export default function AssistScreen() {
         )}
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.foreground }]}
           value={input}
           onChangeText={setInput}
-          placeholder={
-            isRecording ? "रुकिए, सुन रहा हूँ…" : "लिखें या 🎤 बोलें…"
-          }
-          placeholderTextColor="#9CA3AF"
+          placeholder={isRecording ? "रुकिए, सुन रहा हूँ…" : "लिखें या 🎤 बोलें…"}
+          placeholderTextColor={colors.mutedForeground}
           multiline
           maxLength={500}
           editable={!isRecording && !transcribing}
           returnKeyType="send"
         />
 
-        {/* Send button (appears when there's text) */}
         {input.trim() ? (
           <TouchableOpacity
             style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
@@ -303,9 +316,9 @@ export default function AssistScreen() {
           </TouchableOpacity>
         ) : (
           Platform.OS === "web" && (
-            <TouchableOpacity style={styles.sendBtnDisabled} disabled>
+            <View style={styles.sendBtnDisabled}>
               <Feather name="send" size={18} color="#fff" />
-            </TouchableOpacity>
+            </View>
           )
         )}
       </View>
@@ -314,16 +327,14 @@ export default function AssistScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8F7F5" },
+  container: { flex: 1 },
   header: {
-    backgroundColor: "#fff",
     paddingHorizontal: 16,
     paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
     shadowColor: "#000",
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
@@ -332,38 +343,33 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   headerLogo: { width: 80, height: 28 },
-  headerTitle: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  headerSub: { fontSize: 11, color: "#6B7280", marginTop: 1 },
+  headerTitle: { fontSize: 15, fontWeight: "700" },
+  headerSub: { fontSize: 11, marginTop: 1 },
   onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E" },
   recordingBanner: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF7ED",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#FED7AA",
   },
   recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" },
-  recordingText: { fontSize: 13, color: "#92400E", fontWeight: "500" },
+  recordingText: { fontSize: 13, fontWeight: "500" },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyIcon: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: "#FFF7ED",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 8 },
-  emptySub: { fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  emptyTitle: { fontSize: 20, fontWeight: "700", textAlign: "center", marginBottom: 8 },
+  emptySub: { fontSize: 13, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   suggestions: { width: "100%", gap: 8 },
   suggestionChip: {
-    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#F97316",
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -378,7 +384,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#FFF7ED",
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "flex-end",
@@ -386,25 +391,14 @@ const styles = StyleSheet.create({
   },
   botAvatarImg: { width: 28, height: 28 },
   bubble: { maxWidth: "75%", borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
-  bubbleUser: { backgroundColor: "#F97316", borderBottomRightRadius: 4 },
-  bubbleBot: {
-    backgroundColor: "#fff",
-    borderBottomLeftRadius: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-    elevation: 1,
-  },
+  bubbleUser: { borderBottomRightRadius: 4 },
+  bubbleBot: { borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, lineHeight: 20 },
-  bubbleTextUser: { color: "#fff" },
-  bubbleTextBot: { color: "#111827" },
   typingRow: { paddingHorizontal: 16, paddingBottom: 4 },
   typingBubble: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#fff",
     alignSelf: "flex-start",
     borderRadius: 16,
     paddingVertical: 8,
@@ -415,40 +409,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
-  typingText: { fontSize: 12, color: "#6B7280" },
+  typingText: { fontSize: 12 },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: 8,
     paddingHorizontal: 12,
     paddingTop: 10,
-    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: "#F3F4F6",
   },
   micBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FFF7ED",
     borderWidth: 1.5,
-    borderColor: "#F97316",
     alignItems: "center",
     justifyContent: "center",
   },
-  micBtnActive: { backgroundColor: "#EF4444", borderColor: "#EF4444" },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 100,
-    backgroundColor: "#F9FAFB",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#111827",
     borderWidth: 1,
-    borderColor: "#E5E7EB",
   },
   sendBtn: {
     width: 40,
