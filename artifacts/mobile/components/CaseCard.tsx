@@ -53,7 +53,7 @@ export function CaseCard({ item, onPress }: CaseCardProps) {
           <Text
             style={[
               styles.catText,
-              { color: isNeedHelp ? "#92400E" : "#166534" },
+              { color: isNeedHelp ? "#065F46" : "#166534" },
             ]}
           >
             {item.category}

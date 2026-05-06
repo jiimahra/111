@@ -39,8 +39,8 @@ const STATUS_CONFIG: Record<
   inprogress: {
     label: "◐ In Progress",
     lightBg: "#FEF3C7",
-    darkBg: "#78350F",
-    lightText: "#92400E",
+    darkBg: "#064E3B",
+    lightText: "#065F46",
     darkText: "#FDE68A",
   },
   resolved: {
@@ -116,8 +116,8 @@ function MyRequestCard({
                   style={[styles.actionBtn, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B" }]}
                   onPress={() => onStatusChange(item.id, "inprogress")}
                 >
-                  <Feather name="clock" size={13} color="#92400E" />
-                  <Text style={[styles.actionBtnText, { color: "#92400E" }]}>Mark In Progress</Text>
+                  <Feather name="clock" size={13} color="#065F46" />
+                  <Text style={[styles.actionBtnText, { color: "#065F46" }]}>Mark In Progress</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
@@ -269,13 +269,13 @@ export default function ProfileScreen() {
       >
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Profile</Text>
         <TouchableOpacity onPress={() => (editing ? handleSave() : setEditing(true))}>
-          <Text style={[styles.editText, { color: "#F97316" }]}>{editing ? "Save" : "Edit"}</Text>
+          <Text style={[styles.editText, { color: "#059669" }]}>{editing ? "Save" : "Edit"}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Avatar + Name */}
       <View style={styles.avatarSection}>
-        <LinearGradient colors={["#F97316", "#EF4444"]} style={styles.avatar}>
+        <LinearGradient colors={["#059669", "#EF4444"]} style={styles.avatar}>
           <Text style={styles.avatarInitial}>{profile.name.charAt(0).toUpperCase()}</Text>
         </LinearGradient>
         {!editing && (
@@ -317,11 +317,11 @@ export default function ProfileScreen() {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: "#F97316" }]}>{profile.helpedCount}</Text>
+          <Text style={[styles.statValue, { color: "#059669" }]}>{profile.helpedCount}</Text>
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>People Helped</Text>
         </View>
         <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.statValue, { color: "#F97316" }]}>{profile.requestsPosted}</Text>
+          <Text style={[styles.statValue, { color: "#059669" }]}>{profile.requestsPosted}</Text>
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Requests Posted</Text>
         </View>
       </View>
@@ -339,7 +339,7 @@ export default function ProfileScreen() {
               )}
               {inProgressCount > 0 && (
                 <View style={[styles.miniChip, { backgroundColor: "#FEF3C7" }]}>
-                  <Text style={[styles.miniChipText, { color: "#92400E" }]}>{inProgressCount} in progress</Text>
+                  <Text style={[styles.miniChipText, { color: "#065F46" }]}>{inProgressCount} in progress</Text>
                 </View>
               )}
               {resolvedCount > 0 && (
@@ -373,7 +373,7 @@ export default function ProfileScreen() {
                 style={[styles.showMoreBtn, { borderColor: colors.border }]}
                 onPress={() => setShowAll(!showAll)}
               >
-                <Text style={[styles.showMoreText, { color: "#F97316" }]}>
+                <Text style={[styles.showMoreText, { color: "#059669" }]}>
                   {showAll ? "Show Less ↑" : `Show All ${myRequests.length} Requests ↓`}
                 </Text>
               </TouchableOpacity>
@@ -383,8 +383,8 @@ export default function ProfileScreen() {
       </View>
 
       {/* Mission */}
-      <View style={[styles.missionCard, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
-        <Text style={[styles.missionText, { color: "#92400E" }]}>
+      <View style={[styles.missionCard, { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" }]}>
+        <Text style={[styles.missionText, { color: "#065F46" }]}>
           "कोई भी अकेला महसूस न करे, क्योंकि हम सब एक-दूसरे का 'सहारा' हैं।"
         </Text>
       </View>
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   },
   inputInRow: { flex: 1, fontSize: 14 },
   signInBtn: {
-    backgroundColor: "#F97316",
+    backgroundColor: "#059669",
     paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",

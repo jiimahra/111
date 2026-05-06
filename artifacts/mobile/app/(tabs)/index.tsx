@@ -60,7 +60,7 @@ function RequestCard({ item }: { item: HelpRequest }) {
       <View style={styles.requestCardTop}>
         <View style={[styles.catBadge, { backgroundColor: isNeedHelp ? "#FEF3C7" : "#DCFCE7" }]}>
           <Text style={styles.catEmoji}>{cat?.emoji}</Text>
-          <Text style={[styles.catBadgeText, { color: isNeedHelp ? "#92400E" : "#166534" }]}>
+          <Text style={[styles.catBadgeText, { color: isNeedHelp ? "#065F46" : "#166534" }]}>
             {catLabel}
           </Text>
         </View>
@@ -86,7 +86,7 @@ function RequestCard({ item }: { item: HelpRequest }) {
           style={[styles.shareBtn, { backgroundColor: colors.muted }]}
           onPress={() => shareRequest(item)}
         >
-          <Feather name="share-2" size={12} color="#F97316" />
+          <Feather name="share-2" size={12} color="#059669" />
           <Text style={styles.shareBtnText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -252,7 +252,7 @@ export default function HomeScreen() {
 
             {/* Hero */}
             <LinearGradient
-              colors={["#78350F", "#92400E", "#B45309"]}
+              colors={["#064E3B", "#065F46", "#047857"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.hero}
@@ -273,7 +273,7 @@ export default function HomeScreen() {
                     />
                   </View>
                   <View style={styles.locationBox}>
-                    <Feather name="map-pin" size={14} color="#F97316" />
+                    <Feather name="map-pin" size={14} color="#059669" />
                     <Text style={styles.locationText}>Ajmer</Text>
                   </View>
                 </View>
@@ -315,14 +315,14 @@ export default function HomeScreen() {
                     style={[
                       styles.catCard,
                       {
-                        backgroundColor: selectedCat === cat.key ? "#FFF7ED" : colors.card,
-                        borderColor: selectedCat === cat.key ? "#F97316" : colors.border,
+                        backgroundColor: selectedCat === cat.key ? "#ECFDF5" : colors.card,
+                        borderColor: selectedCat === cat.key ? "#059669" : colors.border,
                       },
                     ]}
                     onPress={() => setSelectedCat(selectedCat === cat.key ? null : cat.key)}
                   >
                     <Text style={styles.catCardEmoji}>{cat.emoji}</Text>
-                    <Text style={[styles.catCardLabel, { color: selectedCat === cat.key ? "#F97316" : colors.foreground }]}>
+                    <Text style={[styles.catCardLabel, { color: selectedCat === cat.key ? "#059669" : colors.foreground }]}>
                       {lang === "hi" ? cat.hiLabel : cat.enLabel}
                     </Text>
                     <Text style={[styles.catCardSub, { color: colors.mutedForeground }]}>
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   joinBtn: {
-    backgroundColor: "#F97316",
+    backgroundColor: "#059669",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
   locationText: { fontSize: 13, color: "#374151", fontWeight: "500" },
   ctaRow: { backgroundColor: "#fff", borderRadius: 14, padding: 6, flexDirection: "row", gap: 6 },
   ctaNeedHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#1E3A5F", borderRadius: 10, paddingVertical: 14, gap: 8 },
-  ctaGiveHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#F97316", borderRadius: 10, paddingVertical: 14, gap: 8 },
+  ctaGiveHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#059669", borderRadius: 10, paddingVertical: 14, gap: 8 },
   ctaDot: { width: 8, height: 8, borderRadius: 100, backgroundColor: "#EF4444" },
   ctaNeedHelpText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   ctaGiveHelpText: { color: "#fff", fontWeight: "700", fontSize: 13 },
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   catCardSub: { fontSize: 10 },
 
   recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
-  viewAllText: { fontSize: 13, color: "#F97316", fontWeight: "600" },
+  viewAllText: { fontSize: 13, color: "#059669", fontWeight: "600" },
 
   requestCard: { marginHorizontal: 16, marginBottom: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
   requestCardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   requestMetaText: { fontSize: 11 },
   requestMetaDot: { fontSize: 11 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#F97316" },
+  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#059669" },
 
   emptyState: { alignItems: "center", paddingTop: 40, paddingHorizontal: 20, gap: 8 },
   emptyEmoji: { fontSize: 40 },

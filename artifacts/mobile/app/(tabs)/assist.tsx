@@ -226,7 +226,7 @@ export default function AssistScreen() {
       )}
       {transcribing && (
         <View style={[styles.recordingBanner, { backgroundColor: colors.recordingBg, borderBottomColor: colors.recordingBorder }]}>
-          <ActivityIndicator size="small" color="#F97316" />
+          <ActivityIndicator size="small" color="#059669" />
           <Text style={[styles.recordingText, { color: colors.recordingText }]}>
             आवाज़ समझ रहा हूँ…
           </Text>
@@ -237,7 +237,7 @@ export default function AssistScreen() {
       {messages.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={[styles.emptyIcon, { backgroundColor: colors.accent }]}>
-            <Feather name="message-circle" size={40} color="#F97316" />
+            <Feather name="message-circle" size={40} color="#059669" />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
             नमस्ते! मैं Sahara AI हूँ 🙏
@@ -249,7 +249,7 @@ export default function AssistScreen() {
             {SUGGESTIONS.map((s) => (
               <TouchableOpacity
                 key={s}
-                style={[styles.suggestionChip, { backgroundColor: colors.card, borderColor: "#F97316" }]}
+                style={[styles.suggestionChip, { backgroundColor: colors.card, borderColor: "#059669" }]}
                 onPress={() => sendMessage(s)}
               >
                 <Text style={styles.suggestionText}>{s}</Text>
@@ -272,7 +272,7 @@ export default function AssistScreen() {
       {loading && (
         <View style={styles.typingRow}>
           <View style={[styles.typingBubble, { backgroundColor: colors.card }]}>
-            <ActivityIndicator size="small" color="#F97316" />
+            <ActivityIndicator size="small" color="#059669" />
             <Text style={[styles.typingText, { color: colors.mutedForeground }]}>
               Sahara AI सोच रहा है...
             </Text>
@@ -285,11 +285,11 @@ export default function AssistScreen() {
         {showMic && Platform.OS !== "web" && (
           <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : new Animated.Value(1) }] }}>
             <TouchableOpacity
-              style={[styles.micBtn, { borderColor: "#F97316", backgroundColor: isRecording ? "#EF4444" : colors.accent }]}
+              style={[styles.micBtn, { borderColor: "#059669", backgroundColor: isRecording ? "#EF4444" : colors.accent }]}
               onPress={handleMicPress}
               disabled={transcribing}
             >
-              <Feather name="mic" size={18} color={isRecording ? "#fff" : "#F97316"} />
+              <Feather name="mic" size={18} color={isRecording ? "#fff" : "#059669"} />
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignSelf: "center",
   },
-  suggestionText: { color: "#F97316", fontSize: 13, fontWeight: "500" },
+  suggestionText: { color: "#059669", fontSize: 13, fontWeight: "500" },
   messageList: { padding: 16, gap: 12 },
   msgRow: { flexDirection: "row", marginBottom: 8, gap: 8 },
   msgRowUser: { justifyContent: "flex-end" },
@@ -440,7 +440,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#F97316",
+    backgroundColor: "#059669",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#FED7AA",
+    backgroundColor: "#A7F3D0",
     alignItems: "center",
     justifyContent: "center",
   },

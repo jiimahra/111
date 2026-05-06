@@ -47,7 +47,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           style={{ width: 160, height: 60 }}
           resizeMode="contain"
         />
-        <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 24 }} />
+        <ActivityIndicator size="large" color="#059669" style={{ marginTop: 24 }} />
       </View>
     );
   }
@@ -161,7 +161,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={["#78350F", "#92400E", "#B45309"]}
+          colors={["#064E3B", "#065F46", "#047857"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroBox}
@@ -307,9 +307,9 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: 14 },
   linkRight: { alignSelf: "flex-end", marginTop: 8 },
-  linkText: { color: "#F97316", fontSize: 13, fontWeight: "600" },
+  linkText: { color: "#059669", fontSize: 13, fontWeight: "600" },
   primaryBtn: {
-    backgroundColor: "#F97316",
+    backgroundColor: "#059669",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
@@ -319,6 +319,6 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   switchRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 16 },
   switchText: { fontSize: 13 },
-  switchLink: { color: "#F97316", fontWeight: "700", fontSize: 13 },
+  switchLink: { color: "#059669", fontWeight: "700", fontSize: 13 },
   helper: { fontSize: 11, textAlign: "center", marginTop: 12 },
 });

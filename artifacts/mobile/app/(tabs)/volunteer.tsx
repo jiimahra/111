@@ -58,7 +58,7 @@ function ExploreCard({ item }: { item: HelpRequest }) {
       <View style={styles.cardTop}>
         <View style={[styles.catBadge, { backgroundColor: isNeedHelp ? "#FEF3C7" : "#DCFCE7" }]}>
           <Text style={styles.catEmoji}>{cat?.emoji}</Text>
-          <Text style={[styles.catText, { color: isNeedHelp ? "#92400E" : "#166534" }]}>
+          <Text style={[styles.catText, { color: isNeedHelp ? "#065F46" : "#166534" }]}>
             {cat?.label}
           </Text>
         </View>
@@ -87,7 +87,7 @@ function ExploreCard({ item }: { item: HelpRequest }) {
             style={[styles.shareBtn, { backgroundColor: colors.muted }]}
             onPress={() => shareRequest(item)}
           >
-            <Feather name="share-2" size={13} color="#F97316" />
+            <Feather name="share-2" size={13} color="#059669" />
             <Text style={styles.shareBtnText}>Share</Text>
           </TouchableOpacity>
         </View>
@@ -156,14 +156,14 @@ export default function ExploreScreen() {
                   style={[
                     styles.catChip,
                     {
-                      backgroundColor: selectedCat === cat.key ? "#FFF7ED" : colors.card,
-                      borderColor: selectedCat === cat.key ? "#F97316" : colors.border,
+                      backgroundColor: selectedCat === cat.key ? "#ECFDF5" : colors.card,
+                      borderColor: selectedCat === cat.key ? "#059669" : colors.border,
                     },
                   ]}
                   onPress={() => setSelectedCat(cat.key)}
                 >
                   <Text style={styles.catChipEmoji}>{cat.emoji}</Text>
-                  <Text style={[styles.catChipText, { color: selectedCat === cat.key ? "#F97316" : colors.foreground }]}>
+                  <Text style={[styles.catChipText, { color: selectedCat === cat.key ? "#059669" : colors.foreground }]}>
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   metaRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   metaText: { fontSize: 11 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#F97316" },
+  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#059669" },
   contactBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#EFF6FF", borderRadius: 8, alignSelf: "flex-start" },
   contactBtnText: { fontSize: 12, fontWeight: "600", color: "#1E3A5F" },
   emptyState: { alignItems: "center", paddingTop: 48, gap: 8 },

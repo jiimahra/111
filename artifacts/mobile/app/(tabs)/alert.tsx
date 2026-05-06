@@ -144,7 +144,7 @@ export default function PostScreen() {
             onPress={() => handleChoose("give_help")}
           >
             <LinearGradient
-              colors={["#EA580C", "#F97316"]}
+              colors={["#047857", "#059669"]}
               style={styles.chooseCardGrad}
             >
               <View style={styles.chooseCardDot}>
@@ -209,9 +209,9 @@ export default function PostScreen() {
                 styles.catOption,
                 {
                   backgroundColor:
-                    category === cat.key ? "#FFF7ED" : colors.card,
+                    category === cat.key ? "#ECFDF5" : colors.card,
                   borderColor:
-                    category === cat.key ? "#F97316" : colors.border,
+                    category === cat.key ? "#059669" : colors.border,
                 },
               ]}
               onPress={() => setCategory(cat.key)}
@@ -222,7 +222,7 @@ export default function PostScreen() {
                   styles.catOptionHindi,
                   {
                     color:
-                      category === cat.key ? "#F97316" : colors.foreground,
+                      category === cat.key ? "#059669" : colors.foreground,
                   },
                 ]}
               >
@@ -287,7 +287,7 @@ export default function PostScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Feather name="map-pin" size={16} color="#F97316" />
+          <Feather name="map-pin" size={16} color="#059669" />
           <TextInput
             style={[styles.inputInRow, { color: colors.foreground }]}
             placeholder="Area or landmark..."
@@ -322,7 +322,7 @@ export default function PostScreen() {
             styles.submitBtn,
             {
               backgroundColor:
-                helpType === "need_help" ? "#1E3A5F" : "#F97316",
+                helpType === "need_help" ? "#1E3A5F" : "#059669",
               opacity: submitting ? 0.7 : 1,
             },
           ]}

@@ -136,7 +136,7 @@ function HospitalCard({ item }: { item: Hospital }) {
       </View>
 
       <View style={styles.addressRow}>
-        <Feather name="map-pin" size={12} color="#F97316" />
+        <Feather name="map-pin" size={12} color="#059669" />
         <Text style={[styles.addressText, { color: colors.mutedForeground }]}>
           {item.address}
         </Text>
@@ -215,10 +215,10 @@ export default function HospitalsScreen() {
           <View
             style={[
               styles.permIconBox,
-              { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" },
+              { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" },
             ]}
           >
-            <Feather name="map-pin" size={32} color="#F97316" />
+            <Feather name="map-pin" size={32} color="#059669" />
           </View>
           <Text style={[styles.permTitle, { color: colors.foreground }]}>
             लोकेशन एक्सेस आवश्यक
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F97316",
+    backgroundColor: "#059669",
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
