@@ -42,6 +42,8 @@ interface AppContextType {
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  setAuthedProfile: (user: { name: string; email: string; phone: string; location: string }) => void;
+  logout: () => void;
   loading: boolean;
 }
 
@@ -233,9 +235,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [profile, saveProfile]
   );
 
+  const setAuthedProfile = useCallback(
+    (user: { name: string; email: string; phone: string; location: string }) => {
+      const newProfile: UserProfile = {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        location: user.location || "Ajmer",
+        helpedCount: profile.helpedCount,
+        requestsPosted: profile.requestsPosted,
+      };
+      setProfile(newProfile);
+      saveProfile(newProfile);
+    },
+    [profile.helpedCount, profile.requestsPosted, saveProfile]
+  );
+
+  const logout = useCallback(() => {
+    setProfile(DEFAULT_PROFILE);
+    saveProfile(DEFAULT_PROFILE);
+  }, [saveProfile]);
+
   return (
     <AppContext.Provider
-      value={{ requests, profile, addRequest, resolveRequest, updateRequestStatus, deleteRequest, updateProfile, loading }}
+      value={{ requests, profile, addRequest, resolveRequest, updateRequestStatus, deleteRequest, updateProfile, setAuthedProfile, logout, loading }}
     >
       {children}
     </AppContext.Provider>

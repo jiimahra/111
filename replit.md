@@ -32,7 +32,8 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 
 - Mobile-first, frontend-only — all data persisted via AsyncStorage
 - AppContext manages HelpRequest[] with categories + helpType (need_help/give_help)
-- Auth gate: `components/AuthGate.tsx` wraps `(tabs)/_layout.tsx` — without `profile.name`, only welcome/signup screen is visible. Shows splash loader during AsyncStorage hydration to avoid flash.
+- Auth gate: `components/AuthGate.tsx` wraps `(tabs)/_layout.tsx` — without `profile.name`, only Login/Signup/Forgot/Reset screens visible. Shows splash loader during AsyncStorage hydration.
+- Real auth: API server has `/api/auth/{signup,login,forgot-password,reset-password}` backed by Postgres `users` table (bcrypt password hashes, 6-digit reset codes, 15-min expiry). Reset emails sent via Gmail integration from saharaapphelp@gmail.com (`@replit/connectors-sdk` proxy). Mobile API helper: `lib/auth.ts`. After successful auth, profile is saved via `setAuthedProfile` and persists in AsyncStorage.
 - Design matches saharaapphelp.com exactly: navbar, hero, categories grid, request cards
 - Tab routes kept as original filenames: volunteer=Explore, alert=Post, donate=Hospitals
 - Orange #F97316 primary (matches website), dark navy #1E3A5F for "Request Help" button
