@@ -23,6 +23,7 @@ export interface HelpRequest {
   timestamp: number;
   postedBy: string;
   contactPhone?: string;
+  userId?: string;
 }
 
 export interface UserProfile {
@@ -39,7 +40,7 @@ export interface UserProfile {
 interface AppContextType {
   requests: HelpRequest[];
   profile: UserProfile;
-  addRequest: (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => void;
+  addRequest: (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => Promise<void>;
   resolveRequest: (id: string) => void;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
@@ -47,88 +48,16 @@ interface AppContextType {
   setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string }) => void;
   logout: () => void;
   loading: boolean;
+  refreshRequests: () => Promise<void>;
 }
 
-const REQUESTS_KEY = "@sahara/requests_v2";
 const PROFILE_KEY = "@sahara/profile_v2";
 
-const SEED_REQUESTS: HelpRequest[] = [
-  {
-    id: "1",
-    category: "medical",
-    helpType: "need_help",
-    title: "Elderly man needs hospital help",
-    description:
-      "An elderly man near Ajmer Bus Stand needs help getting to the hospital. He has no family nearby and cannot travel alone.",
-    location: "Ajmer Bus Stand, Ajmer",
-    status: "active",
-    timestamp: Date.now() - 20 * 60 * 1000,
-    postedBy: "Ramesh Kumar",
-    contactPhone: "9876543210",
-  },
-  {
-    id: "2",
-    category: "food",
-    helpType: "need_help",
-    title: "Family of 4 needs food support",
-    description:
-      "A family with 2 small children has not eaten for 2 days. Father lost job recently. Need food items or home cooked meals urgently.",
-    location: "Vaishali Nagar, Ajmer",
-    status: "active",
-    timestamp: Date.now() - 45 * 60 * 1000,
-    postedBy: "Sunita Devi",
-  },
-  {
-    id: "3",
-    category: "animal",
-    helpType: "need_help",
-    title: "Injured dog near railway station",
-    description:
-      "A dog was hit by a vehicle near Ajmer railway station. Needs immediate veterinary care. Cannot walk.",
-    location: "Ajmer Railway Station",
-    status: "active",
-    timestamp: Date.now() - 1.5 * 60 * 60 * 1000,
-    postedBy: "Priya Sharma",
-    contactPhone: "9012345678",
-  },
-  {
-    id: "4",
-    category: "job",
-    helpType: "give_help",
-    title: "Offering 2 jobs at my shop",
-    description:
-      "I have a general store and need 2 helpers. No experience needed. Good salary. Prefer local candidates from Ajmer.",
-    location: "Dargah Bazaar, Ajmer",
-    status: "active",
-    timestamp: Date.now() - 3 * 60 * 60 * 1000,
-    postedBy: "Mohammed Aslam",
-    contactPhone: "9123456789",
-  },
-  {
-    id: "5",
-    category: "education",
-    helpType: "give_help",
-    title: "Free tuition for class 6-10 students",
-    description:
-      "I am offering free tuition for students from poor families. Subjects: Maths, Science, Hindi. Classes on weekends.",
-    location: "Pushkar Road, Ajmer",
-    status: "active",
-    timestamp: Date.now() - 5 * 60 * 60 * 1000,
-    postedBy: "Kavita Joshi",
-  },
-  {
-    id: "6",
-    category: "food",
-    helpType: "give_help",
-    title: "Free langar every Sunday",
-    description:
-      "We serve free food (langar) every Sunday at 1pm. Everyone is welcome. We can feed up to 100 people. Come and bring others.",
-    location: "Naya Bazaar Gurudwara, Ajmer",
-    status: "active",
-    timestamp: Date.now() - 6 * 60 * 60 * 1000,
-    postedBy: "Gurpreet Singh",
-  },
-];
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "");
 
 const DEFAULT_PROFILE: UserProfile = {
   id: "",
@@ -149,6 +78,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
 
+  const fetchRequests = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/requests`);
+      if (!res.ok) return;
+      const data = await res.json() as { requests: HelpRequest[] };
+      setRequests(data.requests);
+    } catch {
+    }
+  }, []);
+
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
@@ -157,84 +96,88 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const loadData = async () => {
     try {
-      const [requestsStr, profileStr] = await Promise.all([
-        AsyncStorage.getItem(REQUESTS_KEY),
-        AsyncStorage.getItem(PROFILE_KEY),
-      ]);
-      setRequests(requestsStr ? JSON.parse(requestsStr) : SEED_REQUESTS);
-      setProfile(profileStr ? JSON.parse(profileStr) : DEFAULT_PROFILE);
+      const profileStr = await AsyncStorage.getItem(PROFILE_KEY);
+      if (profileStr) setProfile(JSON.parse(profileStr) as UserProfile);
+      await fetchRequests();
     } catch {
-      setRequests(SEED_REQUESTS);
+      await fetchRequests();
     } finally {
       setLoading(false);
     }
   };
-
-  const saveRequests = useCallback(async (newRequests: HelpRequest[]) => {
-    await AsyncStorage.setItem(REQUESTS_KEY, JSON.stringify(newRequests));
-  }, []);
 
   const saveProfile = useCallback(async (newProfile: UserProfile) => {
     await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(newProfile));
   }, []);
 
   const addRequest = useCallback(
-    (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => {
-      const newRequest: HelpRequest = {
-        ...data,
-        id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-        timestamp: Date.now(),
-        status: "active",
-      };
-      const updated = [newRequest, ...requests];
-      setRequests(updated);
-      saveRequests(updated);
-      const newProfile = { ...profile, requestsPosted: profile.requestsPosted + 1 };
-      setProfile(newProfile);
-      saveProfile(newProfile);
+    async (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => {
+      try {
+        const res = await fetch(`${API_BASE}/api/requests`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...data,
+            userId: profile.id || undefined,
+          }),
+        });
+        if (!res.ok) throw new Error("API error");
+        const json = await res.json() as { request: HelpRequest };
+        setRequests((prev) => [json.request, ...prev]);
+        const newProfile = { ...profile, requestsPosted: profile.requestsPosted + 1 };
+        setProfile(newProfile);
+        void saveProfile(newProfile);
+      } catch {
+        throw new Error("Failed to post request. Please try again.");
+      }
     },
-    [requests, profile, saveRequests, saveProfile]
+    [profile, saveProfile]
   );
 
   const resolveRequest = useCallback(
     (id: string) => {
-      const updated = requests.map((r) =>
-        r.id === id ? { ...r, status: "resolved" as RequestStatus } : r
+      void fetch(`${API_BASE}/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "resolved" }),
+      });
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "resolved" as RequestStatus } : r))
       );
-      setRequests(updated);
-      saveRequests(updated);
       const newProfile = { ...profile, helpedCount: profile.helpedCount + 1 };
       setProfile(newProfile);
-      saveProfile(newProfile);
+      void saveProfile(newProfile);
     },
-    [requests, profile, saveRequests, saveProfile]
+    [profile, saveProfile]
   );
 
   const updateRequestStatus = useCallback(
     (id: string, status: RequestStatus) => {
-      const updated = requests.map((r) =>
-        r.id === id ? { ...r, status } : r
+      void fetch(`${API_BASE}/api/requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status } : r))
       );
-      setRequests(updated);
-      saveRequests(updated);
     },
-    [requests, saveRequests]
+    []
   );
 
   const deleteRequest = useCallback(
     (id: string) => {
-      const updated = requests.filter((r) => r.id !== id);
-      setRequests(updated);
-      saveRequests(updated);
+      void fetch(`${API_BASE}/api/requests/${id}`, { method: "DELETE" });
+      setRequests((prev) => prev.filter((r) => r.id !== id));
     },
-    [requests, saveRequests]
+    []
   );
 
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       const newProfile = { ...profile, ...updates };
       setProfile(newProfile);
-      saveProfile(newProfile);
+      void saveProfile(newProfile);
     },
     [profile, saveProfile]
   );
@@ -252,19 +195,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requestsPosted: profile.requestsPosted,
       };
       setProfile(newProfile);
-      saveProfile(newProfile);
+      void saveProfile(newProfile);
     },
     [profile.helpedCount, profile.requestsPosted, saveProfile]
   );
 
   const logout = useCallback(() => {
     setProfile(DEFAULT_PROFILE);
-    saveProfile(DEFAULT_PROFILE);
+    void saveProfile(DEFAULT_PROFILE);
   }, [saveProfile]);
 
   return (
     <AppContext.Provider
-      value={{ requests, profile, addRequest, resolveRequest, updateRequestStatus, deleteRequest, updateProfile, setAuthedProfile, logout, loading }}
+      value={{
+        requests,
+        profile,
+        addRequest,
+        resolveRequest,
+        updateRequestStatus,
+        deleteRequest,
+        updateProfile,
+        setAuthedProfile,
+        logout,
+        loading,
+        refreshRequests: fetchRequests,
+      }}
     >
       {children}
     </AppContext.Provider>

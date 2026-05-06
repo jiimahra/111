@@ -52,43 +52,48 @@ export default function PostScreen() {
       return;
     }
     setSubmitting(true);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addRequest({
-      category,
-      helpType,
-      title: title.trim(),
-      description: description.trim(),
-      location: location.trim(),
-      postedBy: profile.name || "Anonymous",
-      contactPhone: phone.trim() || undefined,
-    });
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await addRequest({
+        category,
+        helpType,
+        title: title.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        postedBy: profile.name || "Anonymous",
+        contactPhone: phone.trim() || undefined,
+      });
 
-    void notifyNewRequest({
-      title: title.trim(),
-      category,
-      helpType,
-      location: location.trim(),
-    });
+      void notifyNewRequest({
+        title: title.trim(),
+        category,
+        helpType,
+        location: location.trim(),
+      });
 
-    void scheduleLocalNotification(
-      "Posted! 🙏",
-      helpType === "need_help"
-        ? "Your request has been posted. Someone will reach out soon."
-        : "Your offer to help has been posted. People in need will contact you."
-    );
+      void scheduleLocalNotification(
+        "Posted! 🙏",
+        helpType === "need_help"
+          ? "Your request has been posted. Someone will reach out soon."
+          : "Your offer to help has been posted. People in need will contact you."
+      );
 
-    setTitle("");
-    setDescription("");
-    setLocation("");
-    setPhone("");
-    setStep("choose");
-    setSubmitting(false);
-    Alert.alert(
-      "Posted! 🙏",
-      helpType === "need_help"
-        ? "Your request has been posted. Someone will reach out soon."
-        : "Your offer to help has been posted. People in need will contact you."
-    );
+      setTitle("");
+      setDescription("");
+      setLocation("");
+      setPhone("");
+      setStep("choose");
+      Alert.alert(
+        "Posted! 🙏",
+        helpType === "need_help"
+          ? "Your request has been posted. Someone will reach out soon."
+          : "Your offer to help has been posted. People in need will contact you."
+      );
+    } catch {
+      Alert.alert("Error", "Could not post request. Please check your connection.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (step === "choose") {

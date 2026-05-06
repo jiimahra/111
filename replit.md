@@ -17,7 +17,7 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 - **Mobile**: Expo SDK 54 + expo-router file-based routing
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
-- **State**: AsyncStorage via AppContext (frontend-only, no backend calls)
+- **State**: AppContext — requests via PostgreSQL API, profile via AsyncStorage
 - **Build**: esbuild (CJS bundle for API)
 
 ## Where things live
@@ -29,8 +29,8 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 - Auth API client: `artifacts/mobile/lib/auth.ts`
 - Shared context: `artifacts/mobile/contexts/AppContext.tsx`
 - Brand colors: `artifacts/mobile/constants/colors.ts` (green: #059669, dark: #064E3B)
-- API server: `artifacts/api-server/src/routes/` — auth, social, ai, health, notifications
-- DB schema: `lib/db/src/schema/` — users, social (friend_requests + messages)
+- API server: `artifacts/api-server/src/routes/` — auth, social, ai, health, notifications, requests
+- DB schema: `lib/db/src/schema/` — users, social (friend_requests + messages), requests
 
 ## Architecture decisions
 
