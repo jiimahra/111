@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,6 +21,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/contexts/AppContext";
 import { authApi } from "@/lib/auth";
 
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+
 type Mode = "login" | "signup" | "forgot" | "reset";
 
 const BRAND_GREEN = "#059669";
@@ -30,6 +36,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
@@ -40,6 +47,60 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState("Ajmer");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  const [_req, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_CLIENT_ID || undefined,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === "success" && googleResponse.authentication?.accessToken) {
+      handleGoogleToken(googleResponse.authentication.accessToken);
+    } else if (googleResponse?.type === "error") {
+      Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
+    }
+  }, [googleResponse]);
+
+  const handleGoogleToken = async (accessToken: string) => {
+    setGoogleBusy(true);
+    try {
+      if (mode === "login") {
+        try {
+          const { user } = await authApi.googleLogin(accessToken);
+          setAuthedProfile(user);
+        } catch (e: any) {
+          if (e.message?.includes("no_account") || e.message?.includes("Pehle Sign Up")) {
+            Alert.alert(
+              "Account nahi mila",
+              "Is Google account se koi account nahi hai. Pehle Sign Up karein.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Sign Up Karein", onPress: () => setMode("signup") },
+              ]
+            );
+          } else {
+            Alert.alert("Error", e.message ?? "Google login failed");
+          }
+        }
+      } else {
+        const { user } = await authApi.googleSignup(accessToken);
+        setAuthedProfile(user);
+      }
+    } catch (e: any) {
+      Alert.alert("Error", e.message ?? "Kuch gadbad ho gayi.");
+    } finally {
+      setGoogleBusy(false);
+    }
+  };
+
+  const handleGooglePress = () => {
+    if (!GOOGLE_CLIENT_ID) {
+      Alert.alert("Google Login", "Is feature ke liye app ko saharaapphelp.com par kholen.");
+      return;
+    }
+    void promptGoogleAsync();
+  };
 
   if (loading) {
     return (
@@ -209,6 +270,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   <View style={styles.dividerLine} />
                 </View>
 
+                <GoogleBtn onPress={handleGooglePress} busy={googleBusy} label="Continue with Google" />
+
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <View style={styles.dividerLine} />
+                </View>
+
                 <TouchableOpacity style={styles.outlineBtn} onPress={() => setMode("signup")}>
                   <Text style={styles.outlineBtnText}>Create new account</Text>
                 </TouchableOpacity>
@@ -237,6 +305,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 </View>
 
                 <PrimaryBtn label="Create account" onPress={handleSignup} busy={busy} />
+
+                <View style={[styles.divider, { marginTop: 16 }]}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>OR</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                <GoogleBtn onPress={handleGooglePress} busy={googleBusy} label="Sign up with Google" />
 
                 <Text style={styles.terms}>
                   By signing up you agree to our{" "}
@@ -367,6 +443,21 @@ function PrimaryBtn({ label, onPress, busy }: { label: string; onPress: () => vo
       >
         {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{label}</Text>}
       </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+function GoogleBtn({ onPress, busy, label }: { onPress: () => void; busy: boolean; label: string }) {
+  return (
+    <TouchableOpacity style={styles.googleBtn} onPress={onPress} disabled={busy} activeOpacity={0.85}>
+      {busy ? (
+        <ActivityIndicator color="#444" size="small" />
+      ) : (
+        <>
+          <Text style={styles.googleIcon}>G</Text>
+          <Text style={styles.googleBtnText}>{label}</Text>
+        </>
+      )}
     </TouchableOpacity>
   );
 }
@@ -543,4 +634,23 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontWeight: "500",
   },
+
+  googleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    paddingVertical: 14,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  googleIcon: { fontSize: 17, fontWeight: "900", color: "#4285F4" },
+  googleBtnText: { fontSize: 15, fontWeight: "700", color: "#111827" },
 });
