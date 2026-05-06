@@ -37,6 +37,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "cross.case", selected: "cross.case.fill" }} />
         <Label>Hospitals</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="assist">
+        <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
+        <Label>AI Help</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Profile</Label>
@@ -128,6 +132,18 @@ function ClassicTabLayout() {
               <SymbolView name="cross.case" tintColor={color} size={24} />
             ) : (
               <Feather name="activity" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="assist"
+        options={{
+          title: "AI Help",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="sparkles" tintColor={color} size={24} />
+            ) : (
+              <Feather name="cpu" size={22} color={color} />
             ),
         }}
       />

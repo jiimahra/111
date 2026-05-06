@@ -22,7 +22,7 @@ A mobile app matching saharaapphelp.com — connecting people who need help with
 ## Where things live
 
 - Mobile app: `artifacts/mobile/`
-- App screens: `artifacts/mobile/app/(tabs)/` — index, volunteer (explore), alert (post), donate (hospitals), profile
+- App screens: `artifacts/mobile/app/(tabs)/` — index, volunteer (explore), alert (post), donate (hospitals), assist (AI), profile
 - Shared context: `artifacts/mobile/contexts/AppContext.tsx`
 - Card component: `artifacts/mobile/components/CaseCard.tsx`
 - Brand colors: `artifacts/mobile/constants/colors.ts`
