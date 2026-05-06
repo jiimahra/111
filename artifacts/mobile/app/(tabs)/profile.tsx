@@ -688,10 +688,18 @@ export default function ProfileScreen() {
       <TouchableOpacity
         style={[styles.logoutBtn, { borderColor: colors.border }]}
         onPress={() => {
-          Alert.alert("Sign Out", "Kya aap sign out karna chahte hain?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Sign Out", style: "destructive", onPress: () => { logout(); setEditing(false); } },
-          ]);
+          if (Platform.OS === "web") {
+            // eslint-disable-next-line no-restricted-globals
+            if (confirm("Sign out karna chahte hain?")) {
+              logout();
+              setEditing(false);
+            }
+          } else {
+            Alert.alert("Sign Out", "Kya aap sign out karna chahte hain?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Sign Out", style: "destructive", onPress: () => { logout(); setEditing(false); } },
+            ]);
+          }
         }}
       >
         <Feather name="log-out" size={16} color="#DC2626" />
