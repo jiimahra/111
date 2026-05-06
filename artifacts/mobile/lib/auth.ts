@@ -45,6 +45,12 @@ export const authApi = {
   login(input: { email: string; password: string }) {
     return postJson<{ user: AuthUser }>("/auth/login", input);
   },
+  googleLogin(accessToken: string) {
+    return postJson<{ user: AuthUser }>("/auth/google", { accessToken });
+  },
+  googleSignup(accessToken: string) {
+    return postJson<{ user: AuthUser }>("/auth/google-signup", { accessToken });
+  },
   forgotPassword(email: string) {
     return postJson<{ ok: true; message: string }>("/auth/forgot-password", { email });
   },

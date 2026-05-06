@@ -1,9 +1,12 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import React, { useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
+import React, { useEffect, useState } from "react";
 import { Image } from "react-native";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -17,6 +20,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HelpRequest, RequestStatus, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { authApi } from "@/lib/auth";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   food: "🍲",
@@ -151,8 +157,345 @@ function MyRequestCard({
   );
 }
 
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+
+function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
+  const { setAuthedProfile } = useApp();
+  const colors = useColors();
+  const [tab, setTab] = useState<"login" | "signup">("login");
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Login fields
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [showLoginPw, setShowLoginPw] = useState(false);
+
+  // Signup fields
+  const [signupName, setSignupName] = useState("");
+  const [signupEmail, setSignupEmail] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupPhone, setSignupPhone] = useState("");
+  const [signupLocation, setSignupLocation] = useState("");
+  const [showSignupPw, setShowSignupPw] = useState(false);
+
+  // Forgot password
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [resetNewPw, setResetNewPw] = useState("");
+  const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
+
+  // Google OAuth
+  const [_request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_CLIENT_ID || undefined,
+  });
+
+  useEffect(() => {
+    if (response?.type === "success" && response.authentication?.accessToken) {
+      handleGoogleToken(response.authentication.accessToken);
+    } else if (response?.type === "error") {
+      Alert.alert("Google Error", "Google se login mein dikkat aayi. Dobara koshish karein.");
+    }
+  }, [response]);
+
+  async function handleGoogleToken(accessToken: string) {
+    setGoogleLoading(true);
+    try {
+      if (tab === "login") {
+        try {
+          const { user } = await authApi.googleLogin(accessToken);
+          setAuthedProfile(user);
+        } catch (err: any) {
+          if (err.message?.includes("no_account") || err.message?.includes("Pehle Sign Up")) {
+            Alert.alert(
+              "Account Nahi Mila",
+              "Is Google account se koi account nahi hai.\n\nPehle Sign Up karein.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Sign Up Karein", onPress: () => setTab("signup") },
+              ]
+            );
+          } else {
+            Alert.alert("Error", err.message ?? "Google login failed");
+          }
+        }
+      } else {
+        const { user } = await authApi.googleSignup(accessToken);
+        setAuthedProfile(user);
+      }
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Kuch gadbad ho gayi. Dobara koshish karein.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
+  function handleGooglePress() {
+    if (!GOOGLE_CLIENT_ID) {
+      Alert.alert(
+        "Google Login",
+        "Google login ke liye admin se contact karein ya email/password se login karein.",
+      );
+      return;
+    }
+    void promptAsync();
+  }
+
+  async function handleLogin() {
+    if (!loginEmail.trim() || !loginPassword) {
+      Alert.alert("Required", "Email aur password dono bharo.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { user } = await authApi.login({ email: loginEmail.trim(), password: loginPassword });
+      setAuthedProfile(user);
+    } catch (err: any) {
+      Alert.alert("Login Failed", err.message ?? "Login nahi ho paya.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSignup() {
+    if (!signupName.trim() || !signupEmail.trim() || !signupPassword) {
+      Alert.alert("Required", "Naam, email aur password zaroori hain.");
+      return;
+    }
+    if (signupPassword.length < 6) {
+      Alert.alert("Password Chhota Hai", "Password kam se kam 6 characters ka hona chahiye.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { user } = await authApi.signup({
+        name: signupName.trim(),
+        email: signupEmail.trim(),
+        password: signupPassword,
+        phone: signupPhone.trim() || undefined,
+        location: signupLocation.trim() || undefined,
+      });
+      setAuthedProfile(user);
+    } catch (err: any) {
+      Alert.alert("Signup Failed", err.message ?? "Account nahi ban paya.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotSend() {
+    if (!forgotEmail.trim()) {
+      Alert.alert("Required", "Email address bharo.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await authApi.forgotPassword(forgotEmail.trim());
+      setForgotStep("code");
+      Alert.alert("Code Bheja!", `${forgotEmail} par 6-digit code bheja gaya hai.`);
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Email nahi bheja ja saka.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotReset() {
+    if (!resetCode.trim() || !resetNewPw) {
+      Alert.alert("Required", "Code aur naya password bharo.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { user } = await authApi.resetPassword({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: resetNewPw });
+      setAuthedProfile(user);
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Password reset nahi hua.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const bg = colors.background;
+  const card = colors.card;
+  const fg = colors.foreground;
+  const muted = colors.mutedForeground;
+  const border = colors.border;
+
+  if (forgotMode) {
+    return (
+      <View style={[styles.container, { backgroundColor: bg }]}>
+        <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
+          <TouchableOpacity onPress={() => { setForgotMode(false); setForgotStep("email"); }}>
+            <Feather name="arrow-left" size={22} color={fg} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: fg }]}>Password Reset</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <ScrollView contentContainerStyle={[styles.loginScroll, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
+          <View style={[styles.loginCard, { backgroundColor: card }]}>
+            <Text style={[styles.loginTitle, { color: fg }]}>🔒 Forgot Password</Text>
+            <Text style={[styles.loginSub, { color: muted }]}>
+              {forgotStep === "email" ? "Apna email bharo, hum reset code bhejenge." : "Email par aaya code aur naya password bharo."}
+            </Text>
+
+            {forgotStep === "email" ? (
+              <>
+                <Text style={[styles.fieldLabel, { color: muted }]}>Email Address</Text>
+                <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                  <Feather name="mail" size={16} color={muted} />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="name@example.com" placeholderTextColor={muted} value={forgotEmail} onChangeText={setForgotEmail} keyboardType="email-address" autoCapitalize="none" />
+                </View>
+                <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleForgotSend} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Code Bhejo →</Text>}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.fieldLabel, { color: muted }]}>6-Digit Code</Text>
+                <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                  <Feather name="key" size={16} color={muted} />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="123456" placeholderTextColor={muted} value={resetCode} onChangeText={setResetCode} keyboardType="number-pad" maxLength={6} />
+                </View>
+                <Text style={[styles.fieldLabel, { color: muted }]}>Naya Password</Text>
+                <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                  <Feather name="lock" size={16} color={muted} />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Min 6 characters" placeholderTextColor={muted} value={resetNewPw} onChangeText={setResetNewPw} secureTextEntry />
+                </View>
+                <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleForgotReset} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Password Badlo →</Text>}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
+        <Text style={[styles.headerTitle, { color: fg }]}>Profile</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.loginScroll, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={[styles.loginCard, { backgroundColor: card }]}>
+          <Image source={require("@/assets/images/sahara-logo.png")} style={styles.loginLogoImg} resizeMode="contain" />
+
+          {/* Tab switcher */}
+          <View style={[styles.tabRow, { backgroundColor: bg, borderColor: border }]}>
+            <TouchableOpacity style={[styles.tabBtn, tab === "login" && styles.tabBtnActive]} onPress={() => setTab("login")}>
+              <Text style={[styles.tabBtnText, { color: tab === "login" ? "#fff" : muted }]}>Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.tabBtn, tab === "signup" && styles.tabBtnActive]} onPress={() => setTab("signup")}>
+              <Text style={[styles.tabBtnText, { color: tab === "signup" ? "#fff" : muted }]}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Google button — prominent, at top */}
+          <TouchableOpacity
+            style={styles.googleBtnBig}
+            onPress={handleGooglePress}
+            disabled={googleLoading}
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#444" size="small" />
+            ) : (
+              <>
+                <Text style={styles.googleIcon}>G</Text>
+                <Text style={styles.googleBigLabel}>
+                  {tab === "login" ? "Google se Login karein" : "Google se Sign Up karein"}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={[styles.divider, { backgroundColor: border }]} />
+            <Text style={[styles.dividerText, { color: muted }]}>ya</Text>
+            <View style={[styles.divider, { backgroundColor: border }]} />
+          </View>
+
+          {/* LOGIN TAB */}
+          {tab === "login" && (
+            <>
+              <Text style={[styles.fieldLabel, { color: muted }]}>Email Address</Text>
+              <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                <Feather name="mail" size={16} color={muted} />
+                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="name@example.com" placeholderTextColor={muted} value={loginEmail} onChangeText={setLoginEmail} keyboardType="email-address" autoCapitalize="none" />
+              </View>
+
+              <Text style={[styles.fieldLabel, { color: muted }]}>Password</Text>
+              <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                <Feather name="lock" size={16} color={muted} />
+                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Apna password" placeholderTextColor={muted} value={loginPassword} onChangeText={setLoginPassword} secureTextEntry={!showLoginPw} autoCapitalize="none" />
+                <TouchableOpacity onPress={() => setShowLoginPw(!showLoginPw)}>
+                  <Feather name={showLoginPw ? "eye-off" : "eye"} size={16} color={muted} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={() => { setForgotMode(true); setForgotEmail(loginEmail); }} style={styles.forgotLink}>
+                <Text style={[styles.forgotText, { color: "#059669" }]}>Password bhool gaye?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Login Karein →</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setTab("signup")} style={styles.switchTabLink}>
+                <Text style={[styles.switchTabText, { color: muted }]}>Account nahi hai? <Text style={{ color: "#059669", fontWeight: "700" }}>Sign Up karein</Text></Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* SIGNUP TAB */}
+          {tab === "signup" && (
+            <>
+              {[
+                { label: "Full Name *", value: signupName, setter: setSignupName, icon: "user", placeholder: "Aapka poora naam", type: "default", secure: false },
+                { label: "Email Address *", value: signupEmail, setter: setSignupEmail, icon: "mail", placeholder: "name@example.com", type: "email-address", secure: false },
+                { label: "Phone (optional)", value: signupPhone, setter: setSignupPhone, icon: "phone", placeholder: "+91 98765 43210", type: "phone-pad", secure: false },
+                { label: "City / Location (optional)", value: signupLocation, setter: setSignupLocation, icon: "map-pin", placeholder: "Ajmer, Rajasthan", type: "default", secure: false },
+              ].map((f) => (
+                <View key={f.label}>
+                  <Text style={[styles.fieldLabel, { color: muted }]}>{f.label}</Text>
+                  <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                    <Feather name={f.icon as any} size={16} color={muted} />
+                    <TextInput style={[styles.inputInRow, { color: fg }]} placeholder={f.placeholder} placeholderTextColor={muted} value={f.value} onChangeText={f.setter} keyboardType={f.type as any} autoCapitalize="none" />
+                  </View>
+                </View>
+              ))}
+
+              <Text style={[styles.fieldLabel, { color: muted }]}>Password * (min 6 characters)</Text>
+              <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                <Feather name="lock" size={16} color={muted} />
+                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Apna password banayein" placeholderTextColor={muted} value={signupPassword} onChangeText={setSignupPassword} secureTextEntry={!showSignupPw} autoCapitalize="none" />
+                <TouchableOpacity onPress={() => setShowSignupPw(!showSignupPw)}>
+                  <Feather name={showSignupPw ? "eye-off" : "eye"} size={16} color={muted} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleSignup} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Account Banayein →</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setTab("login")} style={styles.switchTabLink}>
+                <Text style={[styles.switchTabText, { color: muted }]}>Pehle se account hai? <Text style={{ color: "#059669", fontWeight: "700" }}>Login karein</Text></Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
-  const { profile, requests, updateProfile, updateRequestStatus, deleteRequest } = useApp();
+  const { profile, requests, updateProfile, updateRequestStatus, deleteRequest, logout } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [editing, setEditing] = useState(false);
@@ -184,79 +527,8 @@ export default function ProfileScreen() {
     setEditing(false);
   };
 
-  if (!isLoggedIn && !editing) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View
-          style={[
-            styles.header,
-            {
-              paddingTop: topPad + 12,
-              backgroundColor: colors.background,
-              borderBottomColor: colors.border,
-            },
-          ]}
-        >
-          <Text style={[styles.headerTitle, { color: colors.foreground }]}>Profile</Text>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={[styles.loginScroll, { paddingBottom: insets.bottom + 100 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={[styles.loginCard, { backgroundColor: colors.card }]}>
-            <Image
-              source={require("@/assets/images/sahara-logo.png")}
-              style={styles.loginLogoImg}
-              resizeMode="contain"
-            />
-            <Text style={[styles.loginTitle, { color: colors.foreground }]}>Welcome back</Text>
-            <Text style={[styles.loginSub, { color: colors.mutedForeground }]}>
-              Enter your details to set up your profile
-            </Text>
-
-            {[
-              { label: "Full Name", value: name, setter: setName, icon: "user", placeholder: "Your full name", type: "default" },
-              { label: "Email address", value: email, setter: setEmail, icon: "mail", placeholder: "name@example.com", type: "email-address" },
-              { label: "Phone", value: phone, setter: setPhone, icon: "phone", placeholder: "+91 98765 43210", type: "phone-pad" },
-              { label: "City / Location", value: location, setter: setLocation, icon: "map-pin", placeholder: "Ajmer", type: "default" },
-            ].map((field) => (
-              <View key={field.label}>
-                <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{field.label}</Text>
-                <View style={[styles.inputRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <Feather name={field.icon as any} size={16} color={colors.mutedForeground} />
-                  <TextInput
-                    style={[styles.inputInRow, { color: colors.foreground }]}
-                    placeholder={field.placeholder}
-                    placeholderTextColor={colors.mutedForeground}
-                    value={field.value}
-                    onChangeText={field.setter}
-                    keyboardType={field.type as any}
-                    autoCapitalize="none"
-                  />
-                </View>
-              </View>
-            ))}
-
-            <TouchableOpacity style={styles.signInBtn} onPress={handleSave}>
-              <Text style={styles.signInBtnText}>Join Sahara →</Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerRow}>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.mutedForeground }]}>Or continue with</Text>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            </View>
-
-            <TouchableOpacity style={[styles.googleBtn, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={styles.googleBtnText}>G</Text>
-              <Text style={[styles.googleBtnLabel, { color: colors.foreground }]}>Continue with Google</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    );
+  if (!isLoggedIn) {
+    return <AuthScreen topPad={topPad} insets={insets} />;
   }
 
   return (
@@ -416,11 +688,10 @@ export default function ProfileScreen() {
       <TouchableOpacity
         style={[styles.logoutBtn, { borderColor: colors.border }]}
         onPress={() => {
-          updateProfile({ name: "", email: "", phone: "" });
-          setName("");
-          setEmail("");
-          setPhone("");
-          setEditing(false);
+          Alert.alert("Sign Out", "Kya aap sign out karna chahte hain?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign Out", style: "destructive", onPress: () => { logout(); setEditing(false); } },
+          ]);
         }}
       >
         <Feather name="log-out" size={16} color="#DC2626" />
@@ -486,6 +757,48 @@ const styles = StyleSheet.create({
   dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 16, gap: 10 },
   divider: { flex: 1, height: 1 },
   dividerText: { fontSize: 12 },
+  // New auth styles
+  tabRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 20,
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    alignItems: "center",
+    borderRadius: 10,
+  },
+  tabBtnActive: {
+    backgroundColor: "#059669",
+  },
+  tabBtnText: { fontSize: 14, fontWeight: "700" },
+  googleBtnBig: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 14,
+    gap: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  googleIcon: { fontSize: 18, fontWeight: "800", color: "#4285F4" },
+  googleBigLabel: { fontSize: 15, fontWeight: "600", color: "#374151" },
+  forgotLink: { alignSelf: "flex-end", marginTop: 8 },
+  forgotText: { fontSize: 13, fontWeight: "600" },
+  switchTabLink: { alignItems: "center", marginTop: 16 },
+  switchTabText: { fontSize: 13 },
+  btnDisabled: { opacity: 0.6 },
+
   googleBtn: {
     flexDirection: "row",
     alignItems: "center",

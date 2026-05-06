@@ -5,6 +5,18 @@ import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
 import { sendResetEmail } from "../lib/mailer";
 
+const GoogleBody = z.object({
+  accessToken: z.string().min(1),
+});
+
+async function getGoogleUserInfo(accessToken: string) {
+  const res = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch Google user info");
+  return res.json() as Promise<{ id: string; email: string; name: string; picture?: string }>;
+}
+
 const router: IRouter = Router();
 
 async function generateUniqueSaharaId(): Promise<string> {
@@ -96,6 +108,56 @@ router.post("/auth/login", async (req, res) => {
     return res.status(401).json({ error: "Wrong password. Try again or use Forgot Password." });
   }
 
+  return res.json({ user: publicUser(user) });
+});
+
+router.post("/auth/google", async (req, res) => {
+  const parsed = GoogleBody.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  let googleUser: { id: string; email: string; name: string };
+  try {
+    googleUser = await getGoogleUserInfo(parsed.data.accessToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid Google token. Please try again." });
+  }
+
+  const email = googleUser.email.toLowerCase().trim();
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+  if (!existing) {
+    return res.status(404).json({ error: "no_account", message: "Koi account nahi mila is Google email se. Pehle Sign Up karein." });
+  }
+
+  return res.json({ user: publicUser(existing) });
+});
+
+router.post("/auth/google-signup", async (req, res) => {
+  const parsed = GoogleBody.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Invalid request" });
+  }
+  let googleUser: { id: string; email: string; name: string };
+  try {
+    googleUser = await getGoogleUserInfo(parsed.data.accessToken);
+  } catch {
+    return res.status(401).json({ error: "Invalid Google token. Please try again." });
+  }
+
+  const email = googleUser.email.toLowerCase().trim();
+  const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+  if (existing) {
+    return res.json({ user: publicUser(existing) });
+  }
+
+  const saharaId = await generateUniqueSaharaId();
+  const randomPass = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  const passwordHash = await bcrypt.hash(randomPass, 10);
+  const [user] = await db
+    .insert(usersTable)
+    .values({ saharaId, email, passwordHash, name: googleUser.name, phone: null, location: null })
+    .returning();
   return res.json({ user: publicUser(user) });
 });
 
