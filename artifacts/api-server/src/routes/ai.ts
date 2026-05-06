@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import OpenAI from "openai";
+import { Readable } from "stream";
+import { toFile } from "openai/uploads";
 
 const router: IRouter = Router();
 
@@ -51,6 +53,32 @@ router.post("/api/ai/chat", async (req, res) => {
   } catch (err) {
     console.error("AI chat error:", err);
     res.status(500).json({ error: "AI service unavailable" });
+  }
+});
+
+router.post("/api/ai/transcribe", async (req, res) => {
+  try {
+    const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
+    if (!audio) {
+      res.status(400).json({ error: "audio is required" });
+      return;
+    }
+
+    const buffer = Buffer.from(audio, "base64");
+    const ext = (mimeType ?? "audio/m4a").includes("webm") ? "webm" : "m4a";
+    const readable = Readable.from(buffer);
+    const file = await toFile(readable, `audio.${ext}`, { type: mimeType ?? "audio/m4a" });
+
+    const transcription = await openai.audio.transcriptions.create({
+      file,
+      model: "gpt-4o-mini-transcribe",
+      response_format: "json",
+    });
+
+    res.json({ transcript: transcription.text });
+  } catch (err) {
+    console.error("Transcription error:", err);
+    res.status(500).json({ error: "Transcription failed" });
   }
 });
 

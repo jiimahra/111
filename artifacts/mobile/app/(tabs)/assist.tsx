@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Animated,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
+import * as FileSystem from "expo-file-system";
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -38,7 +41,24 @@ export default function AssistScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const flatListRef = useRef<FlatList>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (isRecording) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.3, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [isRecording, pulseAnim]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -60,30 +80,24 @@ export default function AssistScreen() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: history.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            messages: history.map((m) => ({ role: m.role, content: m.content })),
           }),
         });
-
         if (!res.ok) throw new Error("API error");
         const data = (await res.json()) as { reply: string };
-
-        const assistantMsg: Message = {
-          id: Date.now().toString() + "a",
-          role: "assistant",
-          content: data.reply,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
+        setMessages((prev) => [
+          ...prev,
+          { id: Date.now().toString() + "a", role: "assistant", content: data.reply },
+        ]);
       } catch {
-        const errMsg: Message = {
-          id: Date.now().toString() + "e",
-          role: "assistant",
-          content:
-            "माफ़ करें, अभी जवाब देने में दिक्कत है। थोड़ी देर बाद फिर कोशिश करें।",
-        };
-        setMessages((prev) => [...prev, errMsg]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "e",
+            role: "assistant",
+            content: "माफ़ करें, अभी जवाब देने में दिक्कत है। थोड़ी देर बाद फिर कोशिश करें।",
+          },
+        ]);
       } finally {
         setLoading(false);
         setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -91,6 +105,60 @@ export default function AssistScreen() {
     },
     [messages, loading]
   );
+
+  const startRecording = async () => {
+    try {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (!granted) return;
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+      setIsRecording(true);
+    } catch {}
+  };
+
+  const stopRecording = async () => {
+    if (!isRecording) return;
+    setIsRecording(false);
+    setTranscribing(true);
+    try {
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
+      if (!uri) return;
+
+      if (Platform.OS === "web") {
+        setInput("Voice input is available on the mobile app.");
+        return;
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const res = await fetch(`${API_BASE}/api/ai/transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio: base64, mimeType: "audio/m4a" }),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as { transcript: string };
+        if (data.transcript) {
+          setInput(data.transcript);
+        }
+      }
+    } catch {
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const handleMicPress = () => {
+    if (isRecording) {
+      void stopRecording();
+    } else {
+      void startRecording();
+    }
+  };
 
   const renderMessage = ({ item }: { item: Message }) => {
     const isUser = item.role === "user";
@@ -114,6 +182,8 @@ export default function AssistScreen() {
     );
   };
 
+  const showMic = !input.trim() && !loading;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -130,11 +200,25 @@ export default function AssistScreen() {
           />
           <View>
             <Text style={styles.headerTitle}>AI Assistant</Text>
-            <Text style={styles.headerSub}>Sahara सहायक • Always here to help</Text>
+            <Text style={styles.headerSub}>Sahara सहायक • Type या बोलकर पूछें</Text>
           </View>
         </View>
         <View style={styles.onlineDot} />
       </View>
+
+      {/* Recording banner */}
+      {isRecording && (
+        <View style={styles.recordingBanner}>
+          <Animated.View style={[styles.recDot, { transform: [{ scale: pulseAnim }] }]} />
+          <Text style={styles.recordingText}>सुन रहा हूँ… बोलें, फिर mic दबाएं</Text>
+        </View>
+      )}
+      {transcribing && (
+        <View style={styles.recordingBanner}>
+          <ActivityIndicator size="small" color="#F97316" />
+          <Text style={styles.recordingText}>आवाज़ समझ रहा हूँ…</Text>
+        </View>
+      )}
 
       {/* Messages or Empty State */}
       {messages.length === 0 ? (
@@ -144,7 +228,7 @@ export default function AssistScreen() {
           </View>
           <Text style={styles.emptyTitle}>नमस्ते! मैं Sahara AI हूँ 🙏</Text>
           <Text style={styles.emptySub}>
-            भोजन, चिकित्सा, रोजगार, पशु, या शिक्षा — किसी भी मदद के बारे में पूछें
+            लिखकर या 🎤 बोलकर — किसी भी मदद के बारे में पूछें
           </Text>
           <View style={styles.suggestions}>
             {SUGGESTIONS.map((s) => (
@@ -165,13 +249,11 @@ export default function AssistScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
           contentContainerStyle={styles.messageList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
       )}
 
-      {/* Loading */}
+      {/* AI typing indicator */}
       {loading && (
         <View style={styles.typingRow}>
           <View style={styles.typingBubble}>
@@ -181,26 +263,51 @@ export default function AssistScreen() {
         </View>
       )}
 
-      {/* Input */}
+      {/* Input bar */}
       <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+        {/* Mic button (left side when empty) */}
+        {showMic && Platform.OS !== "web" && (
+          <Animated.View style={{ transform: [{ scale: isRecording ? pulseAnim : new Animated.Value(1) }] }}>
+            <TouchableOpacity
+              style={[styles.micBtn, isRecording && styles.micBtnActive]}
+              onPress={handleMicPress}
+              disabled={transcribing}
+            >
+              <Feather name="mic" size={18} color={isRecording ? "#fff" : "#F97316"} />
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="कोई भी सवाल पूछें..."
+          placeholder={
+            isRecording ? "रुकिए, सुन रहा हूँ…" : "लिखें या 🎤 बोलें…"
+          }
           placeholderTextColor="#9CA3AF"
           multiline
           maxLength={500}
-          onSubmitEditing={() => sendMessage(input)}
+          editable={!isRecording && !transcribing}
           returnKeyType="send"
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
-          onPress={() => sendMessage(input)}
-          disabled={!input.trim() || loading}
-        >
-          <Feather name="send" size={18} color="#fff" />
-        </TouchableOpacity>
+
+        {/* Send button (appears when there's text) */}
+        {input.trim() ? (
+          <TouchableOpacity
+            style={[styles.sendBtn, loading && styles.sendBtnDisabled]}
+            onPress={() => sendMessage(input)}
+            disabled={loading}
+          >
+            <Feather name="send" size={18} color="#fff" />
+          </TouchableOpacity>
+        ) : (
+          Platform.OS === "web" && (
+            <TouchableOpacity style={styles.sendBtnDisabled} disabled>
+              <Feather name="send" size={18} color="#fff" />
+            </TouchableOpacity>
+          )
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -227,18 +334,20 @@ const styles = StyleSheet.create({
   headerLogo: { width: 80, height: 28 },
   headerTitle: { fontSize: 15, fontWeight: "700", color: "#111827" },
   headerSub: { fontSize: 11, color: "#6B7280", marginTop: 1 },
-  onlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#22C55E",
-  },
-  emptyState: {
-    flex: 1,
+  onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#22C55E" },
+  recordingBanner: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#FED7AA",
   },
+  recDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#EF4444" },
+  recordingText: { fontSize: 13, color: "#92400E", fontWeight: "500" },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyIcon: {
     width: 72,
     height: 72,
@@ -248,20 +357,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 16,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: "#6B7280",
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 24,
-  },
+  emptyTitle: { fontSize: 20, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 8 },
+  emptySub: { fontSize: 13, color: "#6B7280", textAlign: "center", lineHeight: 20, marginBottom: 24 },
   suggestions: { width: "100%", gap: 8 },
   suggestionChip: {
     backgroundColor: "#fff",
@@ -288,16 +385,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   botAvatarImg: { width: 28, height: 28 },
-  bubble: {
-    maxWidth: "75%",
-    borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  bubbleUser: {
-    backgroundColor: "#F97316",
-    borderBottomRightRadius: 4,
-  },
+  bubble: { maxWidth: "75%", borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14 },
+  bubbleUser: { backgroundColor: "#F97316", borderBottomRightRadius: 4 },
   bubbleBot: {
     backgroundColor: "#fff",
     borderBottomLeftRadius: 4,
@@ -330,13 +419,24 @@ const styles = StyleSheet.create({
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingHorizontal: 12,
     paddingTop: 10,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
   },
+  micBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1.5,
+    borderColor: "#F97316",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micBtnActive: { backgroundColor: "#EF4444", borderColor: "#EF4444" },
   input: {
     flex: 1,
     minHeight: 40,
@@ -358,5 +458,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendBtnDisabled: { backgroundColor: "#FED7AA" },
+  sendBtnDisabled: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FED7AA",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
