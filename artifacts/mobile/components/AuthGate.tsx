@@ -123,41 +123,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const Input = ({
-    icon, placeholder, value, onChange, secure, keyboard, maxLength, rightSlot,
-  }: {
-    icon: keyof typeof Feather.glyphMap;
-    placeholder: string;
-    value: string;
-    onChange: (v: string) => void;
-    secure?: boolean;
-    keyboard?: "email-address" | "phone-pad" | "number-pad" | "default";
-    maxLength?: number;
-    rightSlot?: React.ReactNode;
-  }) => (
-    <View style={styles.inputRow}>
-      <Feather name={icon} size={18} color="#9CA3AF" />
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
-        value={value}
-        onChangeText={onChange}
-        secureTextEntry={secure}
-        keyboardType={keyboard ?? "default"}
-        autoCapitalize={keyboard === "email-address" ? "none" : "sentences"}
-        maxLength={maxLength}
-      />
-      {rightSlot}
-    </View>
-  );
-
-  const PasswordToggle = ({ visible, onToggle }: { visible: boolean; onToggle: () => void }) => (
-    <TouchableOpacity onPress={onToggle} hitSlop={10}>
-      <Feather name={visible ? "eye-off" : "eye"} size={18} color="#9CA3AF" />
-    </TouchableOpacity>
-  );
-
   const isLogin = mode === "login";
   const isSignup = mode === "signup";
 
@@ -348,6 +313,46 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
+  );
+}
+
+function Input({
+  icon, placeholder, value, onChange, secure, keyboard, maxLength, rightSlot,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  secure?: boolean;
+  keyboard?: "email-address" | "phone-pad" | "number-pad" | "default";
+  maxLength?: number;
+  rightSlot?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.inputRow}>
+      <Feather name={icon} size={18} color="#9CA3AF" />
+      <TextInput
+        style={styles.input}
+        placeholder={placeholder}
+        placeholderTextColor="#9CA3AF"
+        value={value}
+        onChangeText={onChange}
+        secureTextEntry={secure}
+        keyboardType={keyboard ?? "default"}
+        autoCapitalize={keyboard === "email-address" ? "none" : "sentences"}
+        autoCorrect={false}
+        maxLength={maxLength}
+      />
+      {rightSlot}
+    </View>
+  );
+}
+
+function PasswordToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
+  return (
+    <TouchableOpacity onPress={onToggle} hitSlop={10}>
+      <Feather name={visible ? "eye-off" : "eye"} size={18} color="#9CA3AF" />
+    </TouchableOpacity>
   );
 }
 
