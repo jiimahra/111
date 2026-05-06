@@ -2,7 +2,9 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as WebBrowser from "expo-web-browser";
 import * as Google from "expo-auth-session/providers/google";
+import { makeRedirectUri } from "expo-auth-session";
 import React, { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import {
   ActivityIndicator,
   Alert,
@@ -48,10 +50,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  const googleRedirectUri = Platform.OS === "web"
+    ? "https://saharaapphelp.com"
+    : makeRedirectUri({ useProxy: true });
+
   const [_req, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_CLIENT_ID || undefined,
     iosClientId: GOOGLE_CLIENT_ID || undefined,
     androidClientId: GOOGLE_CLIENT_ID || undefined,
+    redirectUri: googleRedirectUri,
   });
 
   useEffect(() => {
