@@ -39,6 +39,8 @@ interface AppContextType {
   profile: UserProfile;
   addRequest: (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => void;
   resolveRequest: (id: string) => void;
+  updateRequestStatus: (id: string, status: RequestStatus) => void;
+  deleteRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   loading: boolean;
 }
@@ -202,6 +204,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [requests, profile, saveRequests, saveProfile]
   );
 
+  const updateRequestStatus = useCallback(
+    (id: string, status: RequestStatus) => {
+      const updated = requests.map((r) =>
+        r.id === id ? { ...r, status } : r
+      );
+      setRequests(updated);
+      saveRequests(updated);
+    },
+    [requests, saveRequests]
+  );
+
+  const deleteRequest = useCallback(
+    (id: string) => {
+      const updated = requests.filter((r) => r.id !== id);
+      setRequests(updated);
+      saveRequests(updated);
+    },
+    [requests, saveRequests]
+  );
+
   const updateProfile = useCallback(
     (updates: Partial<UserProfile>) => {
       const newProfile = { ...profile, ...updates };
@@ -213,7 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider
-      value={{ requests, profile, addRequest, resolveRequest, updateProfile, loading }}
+      value={{ requests, profile, addRequest, resolveRequest, updateRequestStatus, deleteRequest, updateProfile, loading }}
     >
       {children}
     </AppContext.Provider>
