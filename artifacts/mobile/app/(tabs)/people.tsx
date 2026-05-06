@@ -27,7 +27,7 @@ export default function PeopleScreen() {
   const { profile } = useApp();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("people");
+  const [tab, setTab] = useState<Tab>("friends");
 
   const [users, setUsers] = useState<SocialUser[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -91,9 +91,9 @@ export default function PeopleScreen() {
   };
 
   const TABS: { key: Tab; label: string; icon: keyof typeof Feather.glyphMap }[] = [
-    { key: "people", label: "People", icon: "users" },
-    { key: "requests", label: "Requests", icon: "user-plus" },
     { key: "friends", label: "Friends", icon: "heart" },
+    { key: "requests", label: "Requests", icon: "user-plus" },
+    { key: "people", label: "People", icon: "users" },
   ];
 
   return (
