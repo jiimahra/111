@@ -35,6 +35,7 @@ export interface UserProfile {
   location: string;
   helpedCount: number;
   requestsPosted: number;
+  photoUri?: string;
 }
 
 interface AppContextType {

@@ -1,10 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import { makeRedirectUri } from "expo-auth-session";
-import React, { useEffect, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
 import { Image } from "react-native";
 import {
   ActivityIndicator,
@@ -22,8 +20,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HelpRequest, RequestStatus, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { authApi } from "@/lib/auth";
-
-WebBrowser.maybeCompleteAuthSession();
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   food: "🍲",
@@ -158,7 +154,9 @@ function MyRequestCard({
   );
 }
 
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
 
 function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
   const { setAuthedProfile } = useApp();
@@ -187,67 +185,14 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const [resetNewPw, setResetNewPw] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
 
-  // Google OAuth
-  const googleRedirectUri = Platform.OS === "web"
-    ? "https://saharaapphelp.com"
-    : makeRedirectUri({ useProxy: true });
-
-  const [_request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_CLIENT_ID || undefined,
-    redirectUri: googleRedirectUri,
-  });
-
-  useEffect(() => {
-    if (response?.type === "success" && response.authentication?.accessToken) {
-      handleGoogleToken(response.authentication.accessToken);
-    } else if (response?.type === "error") {
-      Alert.alert("Google Error", "Google se login mein dikkat aayi. Dobara koshish karein.");
-    }
-  }, [response]);
-
-  async function handleGoogleToken(accessToken: string) {
-    setGoogleLoading(true);
-    try {
-      if (tab === "login") {
-        try {
-          const { user } = await authApi.googleLogin(accessToken);
-          setAuthedProfile(user);
-        } catch (err: any) {
-          if (err.message?.includes("no_account") || err.message?.includes("Pehle Sign Up")) {
-            Alert.alert(
-              "Account Nahi Mila",
-              "Is Google account se koi account nahi hai.\n\nPehle Sign Up karein.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Sign Up Karein", onPress: () => setTab("signup") },
-              ]
-            );
-          } else {
-            Alert.alert("Error", err.message ?? "Google login failed");
-          }
-        }
-      } else {
-        const { user } = await authApi.googleSignup(accessToken);
-        setAuthedProfile(user);
-      }
-    } catch (err: any) {
-      Alert.alert("Error", err.message ?? "Kuch gadbad ho gayi. Dobara koshish karein.");
-    } finally {
-      setGoogleLoading(false);
-    }
-  }
-
   function handleGooglePress() {
-    if (!GOOGLE_CLIENT_ID) {
-      Alert.alert(
-        "Google Login",
-        "Google login ke liye admin se contact karein ya email/password se login karein.",
-      );
-      return;
+    const url = `${API_BASE}/api/auth/google/start?mode=${tab}`;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.location.href = url;
+    } else {
+      const { Linking } = require("react-native");
+      void Linking.openURL(url);
     }
-    void promptAsync();
   }
 
   async function handleLogin() {
@@ -507,9 +452,9 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
   const [phone, setPhone] = useState(profile.phone);
-  const [email, setEmail] = useState(profile.email);
   const [location, setLocation] = useState(profile.location);
   const [showAll, setShowAll] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const isLoggedIn = !!profile.name;
@@ -527,10 +472,63 @@ export default function ProfileScreen() {
     updateProfile({
       name: name.trim(),
       phone: phone.trim(),
-      email: email.trim(),
       location: location.trim(),
     });
     setEditing(false);
+  };
+
+  const handleChangePhoto = () => {
+    Alert.alert("Photo Badlein", "Photo kahan se lena chahte hain?", [
+      {
+        text: "Camera",
+        onPress: () => pickImage("camera"),
+      },
+      {
+        text: "Gallery",
+        onPress: () => pickImage("gallery"),
+      },
+      { text: "Photo Hatao", style: "destructive", onPress: () => updateProfile({ photoUri: undefined }) },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const pickImage = async (source: "camera" | "gallery") => {
+    setPhotoLoading(true);
+    try {
+      let result: ImagePicker.ImagePickerResult;
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission Required", "Camera access allow karein.");
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          base64: false,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert("Permission Required", "Gallery access allow karein.");
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.7,
+          mediaTypes: ["images"],
+        });
+      }
+      if (!result.canceled && result.assets[0]?.uri) {
+        updateProfile({ photoUri: result.assets[0].uri });
+      }
+    } catch {
+      Alert.alert("Error", "Photo nahi le paye. Dobara koshish karein.");
+    } finally {
+      setPhotoLoading(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -554,9 +552,22 @@ export default function ProfileScreen() {
 
       {/* Avatar + Name */}
       <View style={styles.avatarSection}>
-        <LinearGradient colors={["#059669", "#EF4444"]} style={styles.avatar}>
-          <Text style={styles.avatarInitial}>{profile.name.charAt(0).toUpperCase()}</Text>
-        </LinearGradient>
+        <TouchableOpacity onPress={handleChangePhoto} activeOpacity={0.8} style={styles.avatarWrapper}>
+          {profile.photoUri ? (
+            <Image source={{ uri: profile.photoUri }} style={styles.avatarPhoto} />
+          ) : (
+            <LinearGradient colors={["#059669", "#EF4444"]} style={styles.avatar}>
+              <Text style={styles.avatarInitial}>{profile.name.charAt(0).toUpperCase()}</Text>
+            </LinearGradient>
+          )}
+          <View style={styles.cameraBadge}>
+            {photoLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Feather name="camera" size={13} color="#fff" />
+            )}
+          </View>
+        </TouchableOpacity>
         {!editing && (
           <>
             <Text style={[styles.profileName, { color: colors.foreground }]}>{profile.name}</Text>
@@ -593,26 +604,51 @@ export default function ProfileScreen() {
 
       {editing && (
         <View style={styles.formSection}>
-          {[
-            { label: "Full Name", value: name, setter: setName, icon: "user", type: "default" },
-            { label: "Email", value: email, setter: setEmail, icon: "mail", type: "email-address" },
-            { label: "Phone", value: phone, setter: setPhone, icon: "phone", type: "phone-pad" },
-            { label: "Location", value: location, setter: setLocation, icon: "map-pin", type: "default" },
-          ].map((field) => (
-            <View key={field.label}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{field.label}</Text>
-              <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Feather name={field.icon as any} size={16} color={colors.mutedForeground} />
-                <TextInput
-                  style={[styles.inputInRow, { color: colors.foreground }]}
-                  value={field.value}
-                  onChangeText={field.setter}
-                  keyboardType={field.type as any}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-          ))}
+          {/* Full Name */}
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Full Name</Text>
+          <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="user" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.inputInRow, { color: colors.foreground }]}
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+            />
+          </View>
+
+          {/* Email — LOCKED */}
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Email (change nahi ho sakta)</Text>
+          <View style={[styles.inputRow, styles.inputRowLocked, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+            <Feather name="mail" size={16} color={colors.mutedForeground} />
+            <Text style={[styles.inputInRow, styles.lockedText, { color: colors.mutedForeground }]} numberOfLines={1}>
+              {profile.email}
+            </Text>
+            <Feather name="lock" size={14} color={colors.mutedForeground} />
+          </View>
+
+          {/* Phone */}
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Phone</Text>
+          <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="phone" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.inputInRow, { color: colors.foreground }]}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+          </View>
+
+          {/* Location */}
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>Location</Text>
+          <View style={[styles.inputRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Feather name="map-pin" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={[styles.inputInRow, { color: colors.foreground }]}
+              value={location}
+              onChangeText={setLocation}
+              autoCapitalize="words"
+            />
+          </View>
         </View>
       )}
 
@@ -826,8 +862,19 @@ const styles = StyleSheet.create({
   googleBtnLabel: { fontSize: 14, fontWeight: "600" },
 
   avatarSection: { alignItems: "center", paddingVertical: 24, gap: 6 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  avatarWrapper: { position: "relative", marginBottom: 4 },
+  avatar: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center" },
+  avatarPhoto: { width: 88, height: 88, borderRadius: 44 },
   avatarInitial: { fontSize: 32, fontWeight: "800", color: "#fff" },
+  cameraBadge: {
+    position: "absolute", bottom: 0, right: 0,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "#059669",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: "#fff",
+  },
+  inputRowLocked: { opacity: 0.75 },
+  lockedText: { fontSize: 14, flex: 1 },
   profileName: { fontSize: 20, fontWeight: "700" },
   profileSub: { fontSize: 13 },
 
