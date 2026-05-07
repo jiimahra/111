@@ -5,6 +5,23 @@ import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
 import { sendResetEmail } from "../lib/mailer";
 
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
+
+// One-time tokens after Google OAuth callback (5 min expiry)
+const pendingGoogleTokens = new Map<string, { user: ReturnType<typeof publicUser>; expires: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of pendingGoogleTokens.entries()) {
+    if (v.expires < now) pendingGoogleTokens.delete(k);
+  }
+}, 60_000);
+
+function getAppBaseUrl(): string {
+  const domains = (process.env.REPLIT_DOMAINS ?? "").split(",").filter(Boolean);
+  return domains.length > 0 ? `https://${domains[0]}` : "https://saharaapphelp.com";
+}
+
 const GoogleBody = z.object({
   accessToken: z.string().min(1),
 });
@@ -110,6 +127,97 @@ router.post("/auth/login", async (req, res) => {
 
   return res.json({ user: publicUser(user) });
 });
+
+// ─── Backend Google OAuth flow ───────────────────────────────────────────────
+
+router.get("/auth/google/start", (req, res) => {
+  const mode = req.query.mode === "signup" ? "signup" : "login";
+  const appBase = getAppBaseUrl();
+  const redirectUri = `${appBase}/api/auth/google/callback`;
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: "openid email profile",
+    state: mode,
+    access_type: "online",
+    prompt: "select_account",
+  });
+  return res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+router.get("/auth/google/callback", async (req, res) => {
+  const code = req.query.code as string | undefined;
+  const mode = req.query.state === "signup" ? "signup" : "login";
+  const appBase = getAppBaseUrl();
+  const redirectUri = `${appBase}/api/auth/google/callback`;
+
+  if (!code) return res.redirect(`${appBase}?g_error=cancelled`);
+
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        grant_type: "authorization_code",
+      }).toString(),
+    });
+    const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
+    if (!tokenData.access_token) {
+      req.log.error({ tokenData }, "Google token exchange failed");
+      return res.redirect(`${appBase}?g_error=token_failed`);
+    }
+
+    const googleUser = await getGoogleUserInfo(tokenData.access_token);
+    const email = googleUser.email.toLowerCase().trim();
+
+    let user;
+    if (mode === "login") {
+      const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+      if (!existing) return res.redirect(`${appBase}?g_error=no_account`);
+      user = existing;
+    } else {
+      const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+      if (existing) {
+        user = existing;
+      } else {
+        const saharaId = await generateUniqueSaharaId();
+        const randomPass = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const passwordHash = await bcrypt.hash(randomPass, 10);
+        const [newUser] = await db
+          .insert(usersTable)
+          .values({ saharaId, email, passwordHash, name: googleUser.name, phone: null, location: null })
+          .returning();
+        user = newUser;
+      }
+    }
+
+    const token = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+    pendingGoogleTokens.set(token, { user: publicUser(user), expires: Date.now() + 5 * 60 * 1000 });
+    return res.redirect(`${appBase}?g_token=${token}`);
+  } catch (err) {
+    req.log.error({ err }, "Google OAuth callback error");
+    return res.redirect(`${appBase}?g_error=server_error`);
+  }
+});
+
+router.get("/auth/google/verify", (req, res) => {
+  const token = req.query.token as string | undefined;
+  if (!token) return res.status(400).json({ error: "Token required" });
+  const entry = pendingGoogleTokens.get(token);
+  if (!entry || entry.expires < Date.now()) {
+    if (entry) pendingGoogleTokens.delete(token);
+    return res.status(410).json({ error: "Token expired. Please try Google login again." });
+  }
+  pendingGoogleTokens.delete(token);
+  return res.json({ user: entry.user });
+});
+
+// ─── Legacy access-token based endpoints (kept for compatibility) ─────────────
 
 router.post("/auth/google", async (req, res) => {
   const parsed = GoogleBody.safeParse(req.body);

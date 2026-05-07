@@ -1,10 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import { makeRedirectUri } from "expo-auth-session";
+import * as Linking from "expo-linking";
 import React, { useEffect, useState } from "react";
-import { Platform } from "react-native";
 import {
   ActivityIndicator,
   Alert,
@@ -23,9 +20,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/contexts/AppContext";
 import { authApi } from "@/lib/auth";
 
-WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "";
 
 type Mode = "login" | "signup" | "forgot" | "reset";
 
@@ -50,63 +47,49 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  const googleRedirectUri = Platform.OS === "web"
-    ? "https://saharaapphelp.com"
-    : makeRedirectUri({ useProxy: true });
-
-  const [_req, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID || undefined,
-    iosClientId: GOOGLE_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_CLIENT_ID || undefined,
-    redirectUri: googleRedirectUri,
-  });
-
+  // On web: detect g_token or g_error in URL after Google OAuth callback
   useEffect(() => {
-    if (googleResponse?.type === "success" && googleResponse.authentication?.accessToken) {
-      handleGoogleToken(googleResponse.authentication.accessToken);
-    } else if (googleResponse?.type === "error") {
-      Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const gToken = params.get("g_token");
+    const gError = params.get("g_error");
+    if (gToken) {
+      window.history.replaceState({}, "", window.location.pathname);
+      verifyGoogleToken(gToken);
+    } else if (gError) {
+      window.history.replaceState({}, "", window.location.pathname);
+      if (gError === "no_account") {
+        Alert.alert("Account Nahi Mila", "Is Google account se koi account nahi hai. Pehle Sign Up karein.", [
+          { text: "Cancel", style: "cancel" },
+          { text: "Sign Up", onPress: () => setMode("signup") },
+        ]);
+      } else if (gError !== "cancelled") {
+        Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
+      }
     }
-  }, [googleResponse]);
+  }, []);
 
-  const handleGoogleToken = async (accessToken: string) => {
+  const verifyGoogleToken = async (token: string) => {
     setGoogleBusy(true);
     try {
-      if (mode === "login") {
-        try {
-          const { user } = await authApi.googleLogin(accessToken);
-          setAuthedProfile(user);
-        } catch (e: any) {
-          if (e.message?.includes("no_account") || e.message?.includes("Pehle Sign Up")) {
-            Alert.alert(
-              "Account nahi mila",
-              "Is Google account se koi account nahi hai. Pehle Sign Up karein.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Sign Up Karein", onPress: () => setMode("signup") },
-              ]
-            );
-          } else {
-            Alert.alert("Error", e.message ?? "Google login failed");
-          }
-        }
-      } else {
-        const { user } = await authApi.googleSignup(accessToken);
-        setAuthedProfile(user);
-      }
+      const res = await fetch(`${API_BASE}/api/auth/google/verify?token=${token}`);
+      const data = await res.json() as { user?: any; error?: string };
+      if (!res.ok || !data.user) throw new Error(data.error ?? "Verification failed");
+      setAuthedProfile(data.user);
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Kuch gadbad ho gayi.");
+      Alert.alert("Error", e.message ?? "Google login verify nahi hua.");
     } finally {
       setGoogleBusy(false);
     }
   };
 
-  const handleGooglePress = () => {
-    if (!GOOGLE_CLIENT_ID) {
-      Alert.alert("Google Login", "Is feature ke liye app ko saharaapphelp.com par kholen.");
-      return;
+  const handleGooglePress = (googleMode: "login" | "signup") => {
+    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}`;
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      window.location.href = url;
+    } else {
+      void Linking.openURL(url);
     }
-    void promptGoogleAsync();
   };
 
   if (loading) {
@@ -277,7 +260,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   <View style={styles.dividerLine} />
                 </View>
 
-                <GoogleBtn onPress={handleGooglePress} busy={googleBusy} label="Continue with Google" />
+                <GoogleBtn onPress={() => handleGooglePress("login")} busy={googleBusy} label="Continue with Google" />
 
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />
@@ -319,7 +302,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   <View style={styles.dividerLine} />
                 </View>
 
-                <GoogleBtn onPress={handleGooglePress} busy={googleBusy} label="Sign up with Google" />
+                <GoogleBtn onPress={() => handleGooglePress("signup")} busy={googleBusy} label="Sign up with Google" />
 
                 <Text style={styles.terms}>
                   By signing up you agree to our{" "}
