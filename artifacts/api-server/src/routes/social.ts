@@ -213,6 +213,30 @@ router.post("/social/messages", async (req, res) => {
   res.json(msg);
 });
 
+/* ─── POST /api/social/heartbeat ───────────────────────────────────────── */
+router.post("/social/heartbeat", async (req, res) => {
+  const { userId } = req.body as { userId?: string };
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  await db
+    .update(usersTable)
+    .set({ lastSeen: new Date() })
+    .where(eq(usersTable.id, userId));
+  res.json({ ok: true });
+});
+
+/* ─── GET /api/social/online-status/:userId ─────────────────────────────── */
+router.get("/social/online-status/:userId", async (req, res) => {
+  const [user] = await db
+    .select({ lastSeen: usersTable.lastSeen })
+    .from(usersTable)
+    .where(eq(usersTable.id, req.params.userId))
+    .limit(1);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  const lastSeen = user.lastSeen;
+  const isOnline = lastSeen !== null && Date.now() - new Date(lastSeen).getTime() < 60_000;
+  res.json({ isOnline, lastSeen: lastSeen?.toISOString() ?? null });
+});
+
 /* ─── POST /api/social/messages/read ───────────────────────────────────── */
 router.post("/social/messages/read", async (req, res) => {
   const { userId, friendId } = req.body as { userId: string; friendId: string };

@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   location: text("location"),
   resetCode: text("reset_code"),
   resetCodeExpiresAt: timestamp("reset_code_expires_at", { withTimezone: true }),
+  lastSeen: timestamp("last_seen", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

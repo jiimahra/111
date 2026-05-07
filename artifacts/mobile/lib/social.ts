@@ -80,4 +80,10 @@ export const socialApi = {
 
   markRead: (userId: string, friendId: string) =>
     req<{ ok: true }>("/messages/read", { method: "POST", body: { userId, friendId } }),
+
+  heartbeat: (userId: string) =>
+    req<{ ok: true }>("/heartbeat", { method: "POST", body: { userId } }),
+
+  getOnlineStatus: (userId: string) =>
+    req<{ isOnline: boolean; lastSeen: string | null }>(`/online-status/${userId}`),
 };

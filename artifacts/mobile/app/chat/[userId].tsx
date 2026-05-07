@@ -28,19 +28,35 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onlineRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [lastSeen, setLastSeen] = useState<string | null>(null);
 
   const myId = profile.id ?? "";
 
+  const fetchOnlineStatus = useCallback(async () => {
+    if (!friendId) return;
+    try {
+      const status = await socialApi.getOnlineStatus(friendId);
+      setIsOnline(status.isOnline);
+      setLastSeen(status.lastSeen);
+    } catch { /* silent */ }
+  }, [friendId]);
+
   useEffect(() => {
     if (friendName) {
-      navigation.setOptions({ title: friendName });
+      navigation.setOptions({
+        title: friendName,
+        headerTitle: () => <ChatHeader name={friendName} isOnline={isOnline} lastSeen={lastSeen} />,
+      });
     }
-  }, [friendName, navigation]);
+  }, [friendName, navigation, isOnline, lastSeen]);
 
   const fetchMessages = useCallback(async (silent = false) => {
     if (!myId || !friendId) return;
@@ -57,9 +73,24 @@ export default function ChatScreen() {
 
   useEffect(() => {
     fetchMessages();
+    fetchOnlineStatus();
+
     pollRef.current = setInterval(() => fetchMessages(true), 3000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchMessages]);
+    onlineRef.current = setInterval(() => fetchOnlineStatus(), 5000);
+
+    if (myId) {
+      void socialApi.heartbeat(myId);
+      heartbeatRef.current = setInterval(() => {
+        void socialApi.heartbeat(myId);
+      }, 30_000);
+    }
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (onlineRef.current) clearInterval(onlineRef.current);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+    };
+  }, [fetchMessages, fetchOnlineStatus, myId]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -104,6 +135,7 @@ export default function ChatScreen() {
               <Text style={styles.avatarSmallText}>
                 {(friendName ?? "?")[0].toUpperCase()}
               </Text>
+              {isOnline && <View style={styles.avatarOnlineDot} />}
             </View>
           )}
           <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
@@ -130,7 +162,6 @@ export default function ChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      {/* Messages */}
       {messages.length === 0 ? (
         <View style={styles.center}>
           <View style={styles.emptyIcon}>
@@ -150,7 +181,6 @@ export default function ChatScreen() {
         />
       )}
 
-      {/* Input Bar */}
       <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <TextInput
           style={styles.textInput}
@@ -178,6 +208,31 @@ export default function ChatScreen() {
   );
 }
 
+function ChatHeader({ name, isOnline, lastSeen }: { name: string; isOnline: boolean; lastSeen: string | null }) {
+  const subtitle = isOnline ? "Online" : lastSeen ? `Last seen ${formatLastSeen(lastSeen)}` : "Offline";
+  return (
+    <View style={styles.headerContainer}>
+      <Text style={styles.headerName} numberOfLines={1}>{name}</Text>
+      <View style={styles.headerStatusRow}>
+        <View style={[styles.statusDot, { backgroundColor: isOnline ? "#10B981" : "#9CA3AF" }]} />
+        <Text style={[styles.headerStatus, { color: isOnline ? "#10B981" : "#9CA3AF" }]}>
+          {subtitle}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function formatLastSeen(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -195,6 +250,12 @@ function formatTime(iso: string) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F9FAFB" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+
+  headerContainer: { alignItems: "center" },
+  headerName: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  headerStatusRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  headerStatus: { fontSize: 11, fontWeight: "600" },
 
   emptyIcon: {
     width: 72,
@@ -233,6 +294,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   avatarSmallText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  avatarOnlineDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#10B981",
+    borderWidth: 1.5,
+    borderColor: "#F9FAFB",
+  },
 
   bubble: {
     maxWidth: "72%",
