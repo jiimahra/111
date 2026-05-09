@@ -30,25 +30,13 @@ function NativeTabLayout() {
         <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
         <Label>Explore</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="alert">
-        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
-        <Label>Post</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="donate">
-        <Icon sf={{ default: "cross.case", selected: "cross.case.fill" }} />
-        <Label>Hospitals</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="assist">
-        <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
-        <Label>AI Help</Label>
+      <NativeTabs.Trigger name="people">
+        <Icon sf={{ default: "message.circle", selected: "message.circle.fill" }} />
+        <Label>Chat</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
         <Label>Profile</Label>
-      </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="people">
-        <Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
-        <Label>Community</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -117,38 +105,14 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="alert"
+        name="people"
         options={{
-          title: "Post",
+          title: "Chat",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="plus.circle" tintColor={color} size={24} />
+              <SymbolView name="message.circle" tintColor={color} size={24} />
             ) : (
-              <Feather name="plus-circle" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="donate"
-        options={{
-          title: "Hospitals",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="cross.case" tintColor={color} size={24} />
-            ) : (
-              <Feather name="activity" size={22} color={color} />
-            ),
-        }}
-      />
-      <Tabs.Screen
-        name="assist"
-        options={{
-          title: "AI Help",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="sparkles" tintColor={color} size={24} />
-            ) : (
-              <Feather name="cpu" size={22} color={color} />
+              <Feather name="message-circle" size={22} color={color} />
             ),
         }}
       />
@@ -165,16 +129,16 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="people"
-        options={{
-          title: "Community",
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="person.2" tintColor={color} size={24} />
-            ) : (
-              <Feather name="users" size={22} color={color} />
-            ),
-        }}
+        name="alert"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="donate"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="assist"
+        options={{ href: null }}
       />
     </Tabs>
   );

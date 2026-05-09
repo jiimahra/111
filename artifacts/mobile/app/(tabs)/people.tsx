@@ -100,7 +100,7 @@ export default function PeopleScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Community</Text>
+        <Text style={styles.headerTitle}>Chat</Text>
         <Text style={styles.headerSub}>Connect with people around you</Text>
       </View>
 

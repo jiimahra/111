@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
+  Animated,
   FlatList,
   Image as RNImage,
   Modal,
@@ -11,9 +12,12 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  useColorScheme,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -141,7 +145,6 @@ function NotificationsModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-        {/* Header */}
         <View style={[styles.modalHeader, { paddingTop: insets.top + 8, backgroundColor: colors.navBg, borderBottomColor: colors.navBorder }]}>
           <Text style={[styles.modalTitle, { color: colors.foreground }]}>🔔 Notifications / सूचनाएं</Text>
           <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: colors.muted }]}>
@@ -191,6 +194,156 @@ function NotificationsModal({
   );
 }
 
+function MenuDrawer({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const colorScheme = useColorScheme();
+  const [darkMode, setDarkMode] = useState(colorScheme === "dark");
+
+  const menuItems = [
+    { icon: "home" as const, label: "Home", labelHi: "होम", onPress: () => { onClose(); router.push("/(tabs)/"); } },
+    { icon: "search" as const, label: "Explore", labelHi: "एक्सप्लोर", onPress: () => { onClose(); router.push("/(tabs)/volunteer"); } },
+    { icon: "plus-circle" as const, label: "Post Help", labelHi: "पोस्ट करें", onPress: () => { onClose(); router.push("/(tabs)/alert"); } },
+    { icon: "activity" as const, label: "Hospitals", labelHi: "अस्पताल", onPress: () => { onClose(); router.push("/(tabs)/donate"); } },
+    { icon: "cpu" as const, label: "AI Help", labelHi: "AI सहायता", onPress: () => { onClose(); router.push("/(tabs)/assist"); } },
+    { icon: "message-circle" as const, label: "Chat", labelHi: "चैट", onPress: () => { onClose(); router.push("/(tabs)/people"); } },
+    { icon: "user" as const, label: "Profile", labelHi: "प्रोफाइल", onPress: () => { onClose(); router.push("/(tabs)/profile"); } },
+  ];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.drawerOverlay}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.drawer, { backgroundColor: colors.background, paddingTop: insets.top + 16 }]}>
+              {/* Drawer Header */}
+              <LinearGradient
+                colors={["#064E3B", "#059669"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.drawerHeader}
+              >
+                <RNImage
+                  source={require("@/assets/images/sahara-logo.png")}
+                  style={styles.drawerLogo}
+                  resizeMode="contain"
+                />
+                <Text style={styles.drawerTagline}>साथ मिलकर हम बदलाव ला सकते हैं</Text>
+              </LinearGradient>
+
+              {/* Menu Items */}
+              <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+                <Text style={[styles.drawerSectionLabel, { color: colors.mutedForeground }]}>MENU</Text>
+                {menuItems.map((item, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[styles.drawerItem, { borderBottomColor: colors.border }]}
+                    onPress={item.onPress}
+                  >
+                    <View style={styles.drawerItemIcon}>
+                      <Feather name={item.icon} size={18} color="#059669" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>{item.label}</Text>
+                      <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>{item.labelHi}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                ))}
+
+                {/* Settings Section */}
+                <Text style={[styles.drawerSectionLabel, { color: colors.mutedForeground, marginTop: 8 }]}>SETTINGS / सेटिंग्स</Text>
+
+                <View style={[styles.drawerItem, { borderBottomColor: colors.border }]}>
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name="moon" size={18} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Dark Mode</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>डार्क मोड</Text>
+                  </View>
+                  <Switch
+                    value={darkMode}
+                    onValueChange={setDarkMode}
+                    trackColor={{ false: "#E5E7EB", true: "#059669" }}
+                    thumbColor="#fff"
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.drawerItem, { borderBottomColor: colors.border }]}
+                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                >
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name="bell" size={18} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Notifications</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>सूचनाएं</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.drawerItem, { borderBottomColor: colors.border }]}
+                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                >
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name="shield" size={18} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Privacy & Security</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>गोपनीयता और सुरक्षा</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.drawerItem, { borderBottomColor: colors.border }]}
+                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                >
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name="info" size={18} color="#059669" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>About Sahara</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>सहारा के बारे में</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
+                <View style={{ height: 32 }} />
+              </ScrollView>
+
+              {/* Footer */}
+              <View style={[styles.drawerFooter, { borderTopColor: colors.border, paddingBottom: insets.bottom + 16 }]}>
+                <Text style={[styles.drawerFooterText, { color: colors.mutedForeground }]}>
+                  Sahara v1.0 · saharaapphelp.com
+                </Text>
+                <Text style={[styles.drawerFooterText, { color: colors.mutedForeground }]}>
+                  Founded by Nitin Mehra, Nainital
+                </Text>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
 export default function HomeScreen() {
   const { requests } = useApp();
   const colors = useColors();
@@ -200,6 +353,7 @@ export default function HomeScreen() {
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [showNotif, setShowNotif] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const unreadCount = requests.filter((r) => r.status !== "resolved").length;
@@ -224,6 +378,11 @@ export default function HomeScreen() {
         requests={requests}
       />
 
+      <MenuDrawer
+        visible={showMenu}
+        onClose={() => setShowMenu(false)}
+      />
+
       <FlatList<HelpRequest>
         data={activeRequests}
         keyExtractor={(item) => item.id}
@@ -234,6 +393,15 @@ export default function HomeScreen() {
           <>
             {/* Top Nav */}
             <View style={[styles.navbar, { paddingTop: topPad + 8, backgroundColor: colors.navBg, borderBottomColor: colors.navBorder }]}>
+              {/* Left: Hamburger Menu */}
+              <TouchableOpacity
+                style={[styles.menuBtn, { backgroundColor: colors.navBtnBg }]}
+                onPress={() => setShowMenu(true)}
+              >
+                <Feather name="menu" size={22} color={colors.navIcon} />
+              </TouchableOpacity>
+
+              {/* Center: Logo */}
               <View style={styles.navLogo}>
                 <RNImage
                   source={require("@/assets/images/sahara-logo.png")}
@@ -241,8 +409,9 @@ export default function HomeScreen() {
                   resizeMode="contain"
                 />
               </View>
+
+              {/* Right: Lang + Bell + Join */}
               <View style={styles.navRight}>
-                {/* Language toggle */}
                 <TouchableOpacity
                   style={[styles.langBtn, { backgroundColor: colors.navBtnBg, borderColor: colors.border }]}
                   onPress={toggleLang}
@@ -252,7 +421,6 @@ export default function HomeScreen() {
                   </Text>
                 </TouchableOpacity>
 
-                {/* Bell with badge */}
                 <TouchableOpacity
                   style={[styles.navBtn, { backgroundColor: colors.navBtnBg }]}
                   onPress={() => setShowNotif(true)}
@@ -311,7 +479,7 @@ export default function HomeScreen() {
                   >
                     <View style={styles.ctaDot} />
                     <Text style={styles.ctaNeedHelpText}>
-                      {lang === "hi" ? "मदद चाहिए" : "मदद चाहिए"}{"  "}
+                      {"मदद चाहिए"}{"  "}
                       <Text style={styles.ctaSub}>({t("requestHelp")})</Text>
                     </Text>
                   </TouchableOpacity>
@@ -321,7 +489,7 @@ export default function HomeScreen() {
                   >
                     <View style={[styles.ctaDot, { backgroundColor: "#22C55E" }]} />
                     <Text style={styles.ctaGiveHelpText}>
-                      {lang === "hi" ? "मदद करना है" : "मदद करना है"}{"  "}
+                      {"मदद करना है"}{"  "}
                       <Text style={styles.ctaSub2}>({t("offerHelp")})</Text>
                     </Text>
                   </TouchableOpacity>
@@ -394,12 +562,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  navLogo: { flexDirection: "row", alignItems: "center", gap: 8 },
-  logoImg: { width: 110, height: 36 },
+  menuBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navLogo: { flexDirection: "row", alignItems: "center" },
+  logoImg: { width: 100, height: 34 },
   navRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   langBtn: {
     paddingHorizontal: 10,
@@ -499,7 +674,6 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 15, fontWeight: "600" },
   emptyText: { fontSize: 13 },
 
-  // Modal styles
   modalContainer: { flex: 1 },
   modalHeader: {
     flexDirection: "row",
@@ -529,4 +703,60 @@ const styles = StyleSheet.create({
   notifEmpty: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingTop: 80 },
   notifEmptyEmoji: { fontSize: 48 },
   notifEmptyText: { fontSize: 14 },
+
+  // Drawer styles
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    flexDirection: "row",
+  },
+  drawer: {
+    width: "78%",
+    maxWidth: 320,
+    flex: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 4, height: 0 },
+    elevation: 20,
+  },
+  drawerHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    marginBottom: 8,
+  },
+  drawerLogo: { width: 120, height: 40, marginBottom: 8 },
+  drawerTagline: { color: "rgba(255,255,255,0.85)", fontSize: 12, fontStyle: "italic" },
+  drawerSectionLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  drawerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 14,
+  },
+  drawerItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#ECFDF5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  drawerItemLabel: { fontSize: 14, fontWeight: "700" },
+  drawerItemHi: { fontSize: 11, marginTop: 1 },
+  drawerFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 2,
+  },
+  drawerFooterText: { fontSize: 11 },
 });
