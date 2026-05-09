@@ -5,6 +5,7 @@ import notificationsRouter from "./notifications";
 import authRouter from "./auth";
 import socialRouter from "./social";
 import requestsRouter from "./requests";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(notificationsRouter);
 router.use(authRouter);
 router.use(socialRouter);
 router.use(requestsRouter);
+router.use(uploadRouter);
 
 export default router;

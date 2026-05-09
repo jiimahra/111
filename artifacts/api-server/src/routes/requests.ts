@@ -22,6 +22,7 @@ router.get("/requests", async (req, res) => {
       postedBy: r.postedBy,
       timestamp: new Date(r.createdAt).getTime(),
       userId: r.userId ?? undefined,
+      mediaUrls: r.mediaUrls ?? [],
     }));
     res.json({ requests: mapped });
   } catch (err) {
@@ -32,7 +33,7 @@ router.get("/requests", async (req, res) => {
 
 router.post("/requests", async (req, res) => {
   try {
-    const { category, helpType, title, description, location, contactPhone, postedBy, userId } = req.body as {
+    const { category, helpType, title, description, location, contactPhone, postedBy, userId, mediaUrls } = req.body as {
       category?: string;
       helpType?: string;
       title?: string;
@@ -41,6 +42,7 @@ router.post("/requests", async (req, res) => {
       contactPhone?: string;
       postedBy?: string;
       userId?: string;
+      mediaUrls?: string[];
     };
 
     if (!category || !helpType || !title || !description || !location || !postedBy) {
@@ -60,6 +62,7 @@ router.post("/requests", async (req, res) => {
         postedBy,
         userId: userId || null,
         status: "active",
+        mediaUrls: mediaUrls ?? [],
       })
       .returning();
 
@@ -76,6 +79,7 @@ router.post("/requests", async (req, res) => {
         postedBy: row.postedBy,
         timestamp: new Date(row.createdAt).getTime(),
         userId: row.userId ?? undefined,
+        mediaUrls: row.mediaUrls ?? [],
       },
     });
   } catch (err) {

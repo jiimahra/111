@@ -1,10 +1,11 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
-  Image,
+  Image as RNImage,
   Modal,
   Platform,
   ScrollView,
@@ -54,6 +55,7 @@ function RequestCard({ item }: { item: HelpRequest }) {
   const cat = CATEGORIES.find((c) => c.key === item.category);
   const isNeedHelp = item.helpType === "need_help";
   const catLabel = lang === "hi" ? cat?.hiLabel : cat?.enLabel;
+  const hasMedia = item.mediaUrls && item.mediaUrls.length > 0;
 
   return (
     <View style={[styles.requestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -76,6 +78,30 @@ function RequestCard({ item }: { item: HelpRequest }) {
       <Text style={[styles.requestDesc, { color: colors.mutedForeground }]} numberOfLines={2}>
         {item.description}
       </Text>
+      {hasMedia && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardMediaRow}
+        >
+          {item.mediaUrls!.map((url, i) => {
+            const isVideo = url.match(/\.(mp4|mov|webm|3gp|avi)(\?|$)/i);
+            return isVideo ? (
+              <View key={i} style={styles.cardVideoThumb}>
+                <Feather name="play-circle" size={28} color="#fff" />
+                <Text style={styles.cardVideoLabel}>Video</Text>
+              </View>
+            ) : (
+              <Image
+                key={i}
+                source={{ uri: url }}
+                style={styles.cardImageThumb}
+                contentFit="cover"
+              />
+            );
+          })}
+        </ScrollView>
+      )}
       <View style={styles.requestMeta}>
         <Feather name="map-pin" size={12} color={colors.mutedForeground} />
         <Text style={[styles.requestMetaText, { color: colors.mutedForeground }]}>{item.location}</Text>
@@ -209,7 +235,7 @@ export default function HomeScreen() {
             {/* Top Nav */}
             <View style={[styles.navbar, { paddingTop: topPad + 8, backgroundColor: colors.navBg, borderBottomColor: colors.navBorder }]}>
               <View style={styles.navLogo}>
-                <Image
+                <RNImage
                   source={require("@/assets/images/sahara-logo.png")}
                   style={styles.logoImg}
                   resizeMode="contain"
@@ -439,6 +465,19 @@ const styles = StyleSheet.create({
 
   recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
   viewAllText: { fontSize: 13, color: "#059669", fontWeight: "600" },
+
+  cardMediaRow: { gap: 8, paddingBottom: 10 },
+  cardImageThumb: { width: 100, height: 80, borderRadius: 8, overflow: "hidden" },
+  cardVideoThumb: {
+    width: 100,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: "#1E3A5F",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  cardVideoLabel: { color: "#fff", fontSize: 10, fontWeight: "600" },
 
   requestCard: { marginHorizontal: 16, marginBottom: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
   requestCardTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },

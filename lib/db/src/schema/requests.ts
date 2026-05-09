@@ -12,6 +12,7 @@ export const requestsTable = pgTable("requests", {
   status: text("status").notNull().default("active"),
   contactPhone: text("contact_phone"),
   postedBy: text("posted_by").notNull(),
+  mediaUrls: text("media_urls").array().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

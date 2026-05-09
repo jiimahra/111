@@ -24,6 +24,7 @@ export interface HelpRequest {
   postedBy: string;
   contactPhone?: string;
   userId?: string;
+  mediaUrls?: string[];
 }
 
 export interface UserProfile {
