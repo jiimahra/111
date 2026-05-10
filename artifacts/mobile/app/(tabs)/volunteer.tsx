@@ -87,7 +87,7 @@ function ExploreCard({ item }: { item: HelpRequest }) {
             style={[styles.shareBtn, { backgroundColor: colors.muted }]}
             onPress={() => shareRequest(item)}
           >
-            <Feather name="share-2" size={13} color="#059669" />
+            <Feather name="share-2" size={13} color="#7C3AED" />
             <Text style={styles.shareBtnText}>Share</Text>
           </TouchableOpacity>
         </View>
@@ -95,7 +95,7 @@ function ExploreCard({ item }: { item: HelpRequest }) {
 
       {item.contactPhone && (
         <TouchableOpacity style={styles.contactBtn}>
-          <Feather name="phone" size={13} color="#1E3A5F" />
+          <Feather name="phone" size={13} color="#EC4899" />
           <Text style={styles.contactBtnText}>Contact: {item.contactPhone}</Text>
         </TouchableOpacity>
       )}
@@ -139,7 +139,7 @@ export default function ExploreScreen() {
               {FILTERS.map((f) => (
                 <TouchableOpacity
                   key={f.key}
-                  style={[styles.filterChip, { backgroundColor: helpFilter === f.key ? "#1E3A5F" : colors.muted }]}
+                  style={[styles.filterChip, { backgroundColor: helpFilter === f.key ? "#7C3AED" : colors.muted }]}
                   onPress={() => setHelpFilter(f.key)}
                 >
                   <Text style={[styles.filterChipText, { color: helpFilter === f.key ? "#fff" : colors.mutedForeground }]}>
@@ -156,14 +156,14 @@ export default function ExploreScreen() {
                   style={[
                     styles.catChip,
                     {
-                      backgroundColor: selectedCat === cat.key ? "#ECFDF5" : colors.card,
-                      borderColor: selectedCat === cat.key ? "#059669" : colors.border,
+                      backgroundColor: selectedCat === cat.key ? "#F3E8FF" : colors.card,
+                      borderColor: selectedCat === cat.key ? "#7C3AED" : colors.border,
                     },
                   ]}
                   onPress={() => setSelectedCat(cat.key)}
                 >
                   <Text style={styles.catChipEmoji}>{cat.emoji}</Text>
-                  <Text style={[styles.catChipText, { color: selectedCat === cat.key ? "#059669" : colors.foreground }]}>
+                  <Text style={[styles.catChipText, { color: selectedCat === cat.key ? "#7C3AED" : colors.foreground }]}>
                     {cat.label}
                   </Text>
                 </TouchableOpacity>
@@ -217,9 +217,9 @@ const styles = StyleSheet.create({
   metaRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   metaText: { fontSize: 11 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#059669" },
-  contactBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#EFF6FF", borderRadius: 8, alignSelf: "flex-start" },
-  contactBtnText: { fontSize: 12, fontWeight: "600", color: "#1E3A5F" },
+  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#7C3AED" },
+  contactBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: "#F3E8FF", borderRadius: 8, alignSelf: "flex-start" },
+  contactBtnText: { fontSize: 12, fontWeight: "600", color: "#7C3AED" },
   emptyState: { alignItems: "center", paddingTop: 48, gap: 8 },
   emptyEmoji: { fontSize: 40 },
   emptyTitle: { fontSize: 16, fontWeight: "600" },

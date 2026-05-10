@@ -136,7 +136,7 @@ function HospitalCard({ item }: { item: Hospital }) {
       </View>
 
       <View style={styles.addressRow}>
-        <Feather name="map-pin" size={12} color="#059669" />
+        <Feather name="map-pin" size={12} color="#7C3AED" />
         <Text style={[styles.addressText, { color: colors.mutedForeground }]}>
           {item.address}
         </Text>
@@ -154,7 +154,7 @@ function HospitalCard({ item }: { item: Hospital }) {
             style={styles.callBtn}
             onPress={() => Linking.openURL(`tel:${item.phone}`)}
           >
-            <Feather name="phone" size={13} color="#1E3A5F" />
+            <Feather name="phone" size={13} color="#EC4899" />
             <Text style={styles.callBtnText}>Call</Text>
           </TouchableOpacity>
         )}
@@ -218,7 +218,7 @@ export default function HospitalsScreen() {
               { backgroundColor: "#ECFDF5", borderColor: "#A7F3D0" },
             ]}
           >
-            <Feather name="map-pin" size={32} color="#059669" />
+            <Feather name="map-pin" size={32} color="#7C3AED" />
           </View>
           <Text style={[styles.permTitle, { color: colors.foreground }]}>
             लोकेशन एक्सेस आवश्यक
@@ -281,7 +281,7 @@ export default function HospitalsScreen() {
                     styles.filterChip,
                     {
                       backgroundColor:
-                        filter === f ? "#1E3A5F" : colors.muted,
+                        filter === f ? "#7C3AED" : colors.muted,
                     },
                   ]}
                   onPress={() => setFilter(f)}
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#059669",
+    backgroundColor: "#7C3AED",
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 12,
@@ -408,10 +408,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: "#F3E8FF",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 8,
   },
-  callBtnText: { fontSize: 13, fontWeight: "600", color: "#1E3A5F" },
+  callBtnText: { fontSize: 13, fontWeight: "600", color: "#7C3AED" },
 });

@@ -19,8 +19,8 @@ import { useApp } from "@/contexts/AppContext";
 import { useCall } from "@/contexts/CallContext";
 import { socialApi, type ChatMessage } from "@/lib/social";
 
-const GREEN = "#059669";
-const NAVY = "#1E3A5F";
+const GREEN = "#7C3AED";
+const NAVY = "#EC4899";
 
 export default function ChatScreen() {
   const { userId: friendId, name: friendName } = useLocalSearchParams<{ userId: string; name: string }>();

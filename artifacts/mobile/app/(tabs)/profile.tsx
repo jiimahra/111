@@ -120,7 +120,7 @@ function MyRequestCard({
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: "#DCFCE7", borderColor: "#22C55E" }]}
+                style={[styles.actionBtn, { backgroundColor: "#F3E8FF", borderColor: "#7C3AED" }]}
                 onPress={() => onStatusChange(item.id, "resolved")}
               >
                 <Feather name="check-circle" size={13} color="#166534" />
@@ -384,7 +384,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
               </View>
 
               <TouchableOpacity onPress={() => setForgotMode(true)} style={{ alignSelf: "flex-end", marginBottom: 12 }}>
-                <Text style={{ color: "#22C55E", fontSize: 13 }}>Forgot Password?</Text>
+                <Text style={{ color: "#7C3AED", fontSize: 13 }}>Forgot Password?</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
@@ -522,7 +522,7 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.profileBanner}>
+        <LinearGradient colors={["#2D0A6E", "#7C3AED", "#EC4899"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.profileBanner}>
           <TouchableOpacity onPress={pickPhoto} style={styles.avatarWrap} disabled={uploadingPhoto}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.avatar} />
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
   avatarInitial: { fontSize: 32, fontWeight: "700", color: "#fff" },
   avatarEditBadge: {
     position: "absolute", bottom: 0, right: 0,
-    backgroundColor: "#16A34A", borderRadius: 10, padding: 4, borderWidth: 2, borderColor: "#fff",
+    backgroundColor: "#7C3AED", borderRadius: 10, padding: 4, borderWidth: 2, borderColor: "#fff",
   },
   profileName: { fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 },
   editNameInput: {
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     flex: 1, fontSize: 14, borderBottomWidth: 1, paddingVertical: 2,
   },
   saveBtn: {
-    backgroundColor: "#22C55E", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4,
+    backgroundColor: "#7C3AED", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4,
   },
   saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
   loginSub: { fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 18 },
   tabRow: { flexDirection: "row", marginBottom: 20, backgroundColor: "#F3F4F6", borderRadius: 10, padding: 3 },
   tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
-  tabBtnActive: { backgroundColor: "#22C55E" },
+  tabBtnActive: { backgroundColor: "#7C3AED" },
   tabBtnText: { fontSize: 14, fontWeight: "600" },
   fieldLabel: { fontSize: 12, fontWeight: "600", marginBottom: 6, marginTop: 4 },
   inputRow: {
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   },
   inputInRow: { flex: 1, fontSize: 14 },
   signInBtn: {
-    backgroundColor: "#22C55E", borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 4,
+    backgroundColor: "#7C3AED", borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 4,
   },
   btnDisabled: { opacity: 0.6 },
   signInBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },

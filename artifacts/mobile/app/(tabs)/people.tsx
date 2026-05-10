@@ -19,8 +19,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useApp } from "@/contexts/AppContext";
 import { socialApi, type Friend, type FriendRequest, type SocialUser } from "@/lib/social";
 
-const GREEN = "#059669";
-const DARK = "#064E3B";
+const GREEN = "#7C3AED";
+const DARK = "#2D0A6E";
 
 type Tab = "people" | "requests" | "friends";
 
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
 
   cardName: { fontSize: 15, fontWeight: "700", color: "#111827" },
   cardSub: { fontSize: 12, color: "#9CA3AF" },
-  saharaIdBadge: { fontSize: 11, color: "#059669", fontWeight: "700", marginTop: 1, letterSpacing: 0.5 },
+  saharaIdBadge: { fontSize: 11, color: "#7C3AED", fontWeight: "700", marginTop: 1, letterSpacing: 0.5 },
 
   addBtn: {
     flexDirection: "row",
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "#1E3A5F",
+    backgroundColor: "#7C3AED",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,

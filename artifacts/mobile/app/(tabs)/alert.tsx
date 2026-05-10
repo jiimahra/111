@@ -317,7 +317,7 @@ export default function PostScreen() {
             onPress={() => handleChoose("need_help")}
           >
             <LinearGradient
-              colors={["#1E3A5F", "#2D5A8E"]}
+              colors={["#2D0A6E", "#7C3AED"]}
               style={styles.chooseCardGrad}
             >
               <View style={styles.chooseCardDot}>
@@ -339,11 +339,11 @@ export default function PostScreen() {
             onPress={() => handleChoose("give_help")}
           >
             <LinearGradient
-              colors={["#047857", "#059669"]}
+              colors={["#EC4899", "#FF6B00"]}
               style={styles.chooseCardGrad}
             >
               <View style={styles.chooseCardDot}>
-                <View style={[styles.dot, { backgroundColor: "#22C55E" }]} />
+                <View style={[styles.dot, { backgroundColor: "#FF6B00" }]} />
               </View>
               <Text style={styles.chooseCardTitle}>मदद करना है</Text>
               <Text style={styles.chooseCardSub}>(Give Help)</Text>
@@ -360,7 +360,7 @@ export default function PostScreen() {
     );
   }
 
-  const accentColor = helpType === "need_help" ? "#1E3A5F" : "#059669";
+  const accentColor = helpType === "need_help" ? "#7C3AED" : "#EC4899";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -406,9 +406,9 @@ export default function PostScreen() {
                 styles.catOption,
                 {
                   backgroundColor:
-                    category === cat.key ? "#ECFDF5" : colors.card,
+                    category === cat.key ? "#F3E8FF" : colors.card,
                   borderColor:
-                    category === cat.key ? "#059669" : colors.border,
+                    category === cat.key ? "#7C3AED" : colors.border,
                 },
               ]}
               onPress={() => setCategory(cat.key)}
@@ -419,7 +419,7 @@ export default function PostScreen() {
                   styles.catOptionHindi,
                   {
                     color:
-                      category === cat.key ? "#059669" : colors.foreground,
+                      category === cat.key ? "#7C3AED" : colors.foreground,
                   },
                 ]}
               >
@@ -484,7 +484,7 @@ export default function PostScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Feather name="map-pin" size={16} color="#059669" />
+          <Feather name="map-pin" size={16} color="#7C3AED" />
           <TextInput
             style={[styles.inputInRow, { color: colors.foreground }]}
             placeholder="Area or landmark..."
@@ -585,7 +585,7 @@ export default function PostScreen() {
           <Switch
             value={isAnonymous}
             onValueChange={setIsAnonymous}
-            trackColor={{ false: "#E5E7EB", true: "#059669" }}
+            trackColor={{ false: "#E5E7EB", true: "#7C3AED" }}
             thumbColor="#fff"
           />
         </View>
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   videoThumb: {
-    backgroundColor: "#1E3A5F",
+    backgroundColor: "#2D0A6E",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,

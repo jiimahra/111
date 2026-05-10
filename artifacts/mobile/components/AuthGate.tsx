@@ -26,8 +26,8 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 type Mode = "login" | "signup" | "forgot" | "reset";
 
-const BRAND_GREEN = "#059669";
-const BRAND_DARK = "#064E3B";
+const BRAND_GREEN = "#7C3AED";
+const BRAND_DARK = "#2D0A6E";
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { profile, setAuthedProfile, loading } = useApp();
@@ -95,7 +95,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <LinearGradient
-        colors={[BRAND_DARK, "#065F46", BRAND_GREEN]}
+        colors={[BRAND_DARK, "#7C3AED", "#EC4899"]}
         style={styles.loadingContainer}
       >
         <View style={styles.logoCircle}>
@@ -180,7 +180,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={[BRAND_DARK, "#065F46", BRAND_GREEN, "#10B981"]}
+        colors={[BRAND_DARK, "#7C3AED", "#EC4899", "#FF6B00"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -426,7 +426,7 @@ function PrimaryBtn({ label, onPress, busy }: { label: string; onPress: () => vo
   return (
     <TouchableOpacity style={[styles.primaryBtn, busy && { opacity: 0.6 }]} onPress={onPress} disabled={busy} activeOpacity={0.85}>
       <LinearGradient
-        colors={[BRAND_GREEN, "#047857"]}
+        colors={[BRAND_GREEN, "#EC4899"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.primaryBtnGrad}
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#F3E8FF",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,

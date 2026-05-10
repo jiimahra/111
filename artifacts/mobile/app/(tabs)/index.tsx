@@ -116,7 +116,7 @@ function RequestCard({ item }: { item: HelpRequest }) {
           style={[styles.shareBtn, { backgroundColor: colors.muted }]}
           onPress={() => shareRequest(item)}
         >
-          <Feather name="share-2" size={12} color="#059669" />
+          <Feather name="share-2" size={12} color="#7C3AED" />
           <Text style={styles.shareBtnText}>Share</Text>
         </TouchableOpacity>
       </View>
@@ -236,7 +236,7 @@ function MenuDrawer({
             <View style={[styles.drawer, { backgroundColor: colors.background, paddingTop: insets.top + 16 }]}>
               {/* Drawer Header */}
               <LinearGradient
-                colors={["#064E3B", "#059669"]}
+                colors={["#2D0A6E", "#7C3AED", "#EC4899"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.drawerHeader}
@@ -259,7 +259,7 @@ function MenuDrawer({
                     onPress={item.onPress}
                   >
                     <View style={styles.drawerItemIcon}>
-                      <Feather name={item.icon} size={18} color="#059669" />
+                      <Feather name={item.icon} size={18} color="#7C3AED" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>{item.label}</Text>
@@ -274,7 +274,7 @@ function MenuDrawer({
 
                 <View style={[styles.drawerItem, { borderBottomColor: colors.border }]}>
                   <View style={styles.drawerItemIcon}>
-                    <Feather name="moon" size={18} color="#059669" />
+                    <Feather name="moon" size={18} color="#7C3AED" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Dark Mode</Text>
@@ -283,7 +283,7 @@ function MenuDrawer({
                   <Switch
                     value={isDark}
                     onValueChange={toggleTheme}
-                    trackColor={{ false: "#E5E7EB", true: "#059669" }}
+                    trackColor={{ false: "#E5E7EB", true: "#7C3AED" }}
                     thumbColor="#fff"
                   />
                 </View>
@@ -293,7 +293,7 @@ function MenuDrawer({
                   onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
                 >
                   <View style={styles.drawerItemIcon}>
-                    <Feather name="bell" size={18} color="#059669" />
+                    <Feather name="bell" size={18} color="#7C3AED" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Notifications</Text>
@@ -307,7 +307,7 @@ function MenuDrawer({
                   onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
                 >
                   <View style={styles.drawerItemIcon}>
-                    <Feather name="shield" size={18} color="#059669" />
+                    <Feather name="shield" size={18} color="#7C3AED" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Privacy & Security</Text>
@@ -321,7 +321,7 @@ function MenuDrawer({
                   onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
                 >
                   <View style={styles.drawerItemIcon}>
-                    <Feather name="info" size={18} color="#059669" />
+                    <Feather name="info" size={18} color="#7C3AED" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>About Sahara</Text>
@@ -480,7 +480,7 @@ export default function HomeScreen() {
 
             {/* Hero */}
             <LinearGradient
-              colors={["#064E3B", "#065F46", "#047857"]}
+              colors={["#2D0A6E", "#7C3AED", "#EC4899", "#FF6B00"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.hero}
@@ -501,7 +501,7 @@ export default function HomeScreen() {
                     />
                   </View>
                   <View style={styles.locationBox}>
-                    <Feather name="map-pin" size={14} color="#059669" />
+                    <Feather name="map-pin" size={14} color="#EC4899" />
                     <Text style={styles.locationText}>Ajmer</Text>
                   </View>
                 </View>
@@ -543,14 +543,14 @@ export default function HomeScreen() {
                     style={[
                       styles.catCard,
                       {
-                        backgroundColor: selectedCat === cat.key ? "#ECFDF5" : colors.card,
-                        borderColor: selectedCat === cat.key ? "#059669" : colors.border,
+                        backgroundColor: selectedCat === cat.key ? "#F3E8FF" : colors.card,
+                        borderColor: selectedCat === cat.key ? "#7C3AED" : colors.border,
                       },
                     ]}
                     onPress={() => setSelectedCat(selectedCat === cat.key ? null : cat.key)}
                   >
                     <Text style={styles.catCardEmoji}>{cat.emoji}</Text>
-                    <Text style={[styles.catCardLabel, { color: selectedCat === cat.key ? "#059669" : colors.foreground }]}>
+                    <Text style={[styles.catCardLabel, { color: selectedCat === cat.key ? "#7C3AED" : colors.foreground }]}>
                       {lang === "hi" ? cat.hiLabel : cat.enLabel}
                     </Text>
                     <Text style={[styles.catCardSub, { color: colors.mutedForeground }]}>
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   joinBtn: {
-    backgroundColor: "#059669",
+    backgroundColor: "#7C3AED",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -656,8 +656,8 @@ const styles = StyleSheet.create({
   locationBox: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
   locationText: { fontSize: 13, color: "#374151", fontWeight: "500" },
   ctaRow: { backgroundColor: "#fff", borderRadius: 14, padding: 6, flexDirection: "row", gap: 6 },
-  ctaNeedHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#1E3A5F", borderRadius: 10, paddingVertical: 14, gap: 8 },
-  ctaGiveHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#059669", borderRadius: 10, paddingVertical: 14, gap: 8 },
+  ctaNeedHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#EC4899", borderRadius: 10, paddingVertical: 14, gap: 8 },
+  ctaGiveHelp: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: "#FF6B00", borderRadius: 10, paddingVertical: 14, gap: 8 },
   ctaDot: { width: 8, height: 8, borderRadius: 100, backgroundColor: "#EF4444" },
   ctaNeedHelpText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   ctaGiveHelpText: { color: "#fff", fontWeight: "700", fontSize: 13 },
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
   catCardSub: { fontSize: 10 },
 
   recentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
-  viewAllText: { fontSize: 13, color: "#059669", fontWeight: "600" },
+  viewAllText: { fontSize: 13, color: "#7C3AED", fontWeight: "600" },
 
   cardMediaRow: { gap: 8, paddingBottom: 10 },
   cardImageThumb: { width: 100, height: 80, borderRadius: 8, overflow: "hidden" },
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 80,
     borderRadius: 8,
-    backgroundColor: "#1E3A5F",
+    backgroundColor: "#2D0A6E",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   requestMetaText: { fontSize: 11 },
   requestMetaDot: { fontSize: 11 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#059669" },
+  shareBtnText: { fontSize: 11, fontWeight: "600", color: "#7C3AED" },
 
   emptyState: { alignItems: "center", paddingTop: 40, paddingHorizontal: 20, gap: 8 },
   emptyEmoji: { fontSize: 40 },
@@ -780,7 +780,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "#F3E8FF",
     alignItems: "center",
     justifyContent: "center",
   },
