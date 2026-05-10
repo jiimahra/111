@@ -25,6 +25,7 @@ export interface HelpRequest {
   contactPhone?: string;
   userId?: string;
   mediaUrls?: string[];
+  isAnonymous?: boolean;
 }
 
 export interface UserProfile {
@@ -144,7 +145,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...data,
-            userId: profile.id || undefined,
+            userId: data.isAnonymous ? undefined : (profile.id || undefined),
           }),
         });
         if (!res.ok) throw new Error("API error");

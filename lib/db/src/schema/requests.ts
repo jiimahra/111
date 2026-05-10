@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 export const requestsTable = pgTable("requests", {
@@ -13,6 +13,7 @@ export const requestsTable = pgTable("requests", {
   contactPhone: text("contact_phone"),
   postedBy: text("posted_by").notNull(),
   mediaUrls: text("media_urls").array().default([]),
+  isAnonymous: boolean("is_anonymous").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

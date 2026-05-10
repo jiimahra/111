@@ -120,6 +120,12 @@ function RequestCard({ item }: { item: HelpRequest }) {
           <Text style={styles.shareBtnText}>Share</Text>
         </TouchableOpacity>
       </View>
+      <View style={styles.postedByRow}>
+        <Feather name={item.isAnonymous ? "eye-off" : "user"} size={11} color={colors.mutedForeground} />
+        <Text style={[styles.postedByText, { color: colors.mutedForeground }]}>
+          {item.isAnonymous ? "🕵️ Anonymous" : item.postedBy}
+        </Text>
+      </View>
     </View>
   );
 }
@@ -796,4 +802,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   drawerFooterText: { fontSize: 11 },
+
+  postedByRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 6,
+  },
+  postedByText: { fontSize: 11 },
 });

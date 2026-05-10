@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -58,6 +59,7 @@ export default function PostScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [media, setMedia] = useState<PickedMedia[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -250,8 +252,9 @@ export default function PostScreen() {
       description: description.trim(),
       location: location.trim(),
       postedBy: profile.name || "Anonymous",
-      contactPhone: phone.trim() || undefined,
+      contactPhone: isAnonymous ? undefined : (phone.trim() || undefined),
       mediaUrls,
+      isAnonymous,
     });
 
     void notifyNewRequest({
@@ -273,6 +276,7 @@ export default function PostScreen() {
     setLocation("");
     setPhone("");
     setMedia([]);
+    setIsAnonymous(false);
     setStep("choose");
     Alert.alert(
       "Posted! 🙏",
@@ -568,6 +572,24 @@ export default function PostScreen() {
           </View>
         )}
 
+        <View style={[styles.anonymousRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.anonymousLeft}>
+            <Text style={styles.anonymousIcon}>🕵️</Text>
+            <View>
+              <Text style={[styles.anonymousLabel, { color: colors.foreground }]}>Anonymous Post</Text>
+              <Text style={[styles.anonymousSub, { color: colors.mutedForeground }]}>
+                {isAnonymous ? "आपका नाम छुपा रहेगा" : "आपका नाम दिखेगा"}
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={isAnonymous}
+            onValueChange={setIsAnonymous}
+            trackColor={{ false: "#E5E7EB", true: "#059669" }}
+            thumbColor="#fff"
+          />
+        </View>
+
         <TouchableOpacity
           style={[
             styles.submitBtn,
@@ -747,6 +769,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
+  anonymousRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  anonymousLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  anonymousIcon: { fontSize: 22 },
+  anonymousLabel: { fontSize: 14, fontWeight: "700" },
+  anonymousSub: { fontSize: 11, marginTop: 2 },
 
   submitBtn: {
     flexDirection: "row",

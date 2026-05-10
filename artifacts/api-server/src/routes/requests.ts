@@ -18,11 +18,12 @@ router.get("/requests", async (req, res) => {
       description: r.description,
       location: r.location,
       status: r.status,
-      contactPhone: r.contactPhone ?? undefined,
-      postedBy: r.postedBy,
+      contactPhone: r.isAnonymous ? undefined : (r.contactPhone ?? undefined),
+      postedBy: r.isAnonymous ? "Anonymous" : r.postedBy,
       timestamp: new Date(r.createdAt).getTime(),
-      userId: r.userId ?? undefined,
+      userId: r.isAnonymous ? undefined : (r.userId ?? undefined),
       mediaUrls: r.mediaUrls ?? [],
+      isAnonymous: r.isAnonymous ?? false,
     }));
     res.json({ requests: mapped });
   } catch (err) {
@@ -33,7 +34,7 @@ router.get("/requests", async (req, res) => {
 
 router.post("/requests", async (req, res) => {
   try {
-    const { category, helpType, title, description, location, contactPhone, postedBy, userId, mediaUrls } = req.body as {
+    const { category, helpType, title, description, location, contactPhone, postedBy, userId, mediaUrls, isAnonymous } = req.body as {
       category?: string;
       helpType?: string;
       title?: string;
@@ -43,12 +44,15 @@ router.post("/requests", async (req, res) => {
       postedBy?: string;
       userId?: string;
       mediaUrls?: string[];
+      isAnonymous?: boolean;
     };
 
     if (!category || !helpType || !title || !description || !location || !postedBy) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
+
+    const anonymous = isAnonymous === true;
 
     const [row] = await db
       .insert(requestsTable)
@@ -58,11 +62,12 @@ router.post("/requests", async (req, res) => {
         title,
         description,
         location,
-        contactPhone: contactPhone || null,
+        contactPhone: anonymous ? null : (contactPhone || null),
         postedBy,
         userId: userId || null,
         status: "active",
         mediaUrls: mediaUrls ?? [],
+        isAnonymous: anonymous,
       })
       .returning();
 
@@ -75,11 +80,12 @@ router.post("/requests", async (req, res) => {
         description: row.description,
         location: row.location,
         status: row.status,
-        contactPhone: row.contactPhone ?? undefined,
-        postedBy: row.postedBy,
+        contactPhone: anonymous ? undefined : (row.contactPhone ?? undefined),
+        postedBy: anonymous ? "Anonymous" : row.postedBy,
         timestamp: new Date(row.createdAt).getTime(),
-        userId: row.userId ?? undefined,
+        userId: anonymous ? undefined : (row.userId ?? undefined),
         mediaUrls: row.mediaUrls ?? [],
+        isAnonymous: anonymous,
       },
     });
   } catch (err) {
