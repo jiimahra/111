@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useApp } from "@/contexts/AppContext";
+import { useCall } from "@/contexts/CallContext";
 import { socialApi, type ChatMessage } from "@/lib/social";
 
 const GREEN = "#059669";
@@ -24,6 +25,7 @@ const NAVY = "#1E3A5F";
 export default function ChatScreen() {
   const { userId: friendId, name: friendName } = useLocalSearchParams<{ userId: string; name: string }>();
   const { profile } = useApp();
+  const { startCall } = useCall();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
@@ -37,6 +39,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
+  const [calling, setCalling] = useState(false);
 
   const myId = profile.id ?? "";
 
@@ -49,14 +52,46 @@ export default function ChatScreen() {
     } catch { /* silent */ }
   }, [friendId]);
 
+  const handleCall = useCallback(async (isVideo: boolean) => {
+    if (!friendId || !friendName || calling) return;
+    setCalling(true);
+    try {
+      await startCall(friendId, friendName, isVideo);
+    } catch (e: any) {
+      Alert.alert("Call Failed", e?.message ?? "Could not start call.");
+    } finally {
+      setCalling(false);
+    }
+  }, [friendId, friendName, calling, startCall]);
+
   useEffect(() => {
     if (friendName) {
       navigation.setOptions({
         title: friendName,
-        headerTitle: () => <ChatHeader name={friendName} isOnline={isOnline} lastSeen={lastSeen} />,
+        headerTitle: () => (
+          <ChatHeader name={friendName} isOnline={isOnline} lastSeen={lastSeen} />
+        ),
+        headerRight: () => (
+          <View style={{ flexDirection: "row", gap: 6, marginRight: 4 }}>
+            <TouchableOpacity
+              style={headerStyles.callBtn}
+              onPress={() => handleCall(false)}
+              disabled={calling}
+            >
+              <Feather name="phone" size={19} color={GREEN} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={headerStyles.callBtn}
+              onPress={() => handleCall(true)}
+              disabled={calling}
+            >
+              <Feather name="video" size={19} color={GREEN} />
+            </TouchableOpacity>
+          </View>
+        ),
       });
     }
-  }, [friendName, navigation, isOnline, lastSeen]);
+  }, [friendName, navigation, isOnline, lastSeen, handleCall, calling]);
 
   const fetchMessages = useCallback(async (silent = false) => {
     if (!myId || !friendId) return;
@@ -246,6 +281,19 @@ function formatTime(iso: string) {
   return d.toLocaleDateString([], { month: "short", day: "numeric" }) +
     " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+
+const headerStyles = StyleSheet.create({
+  callBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F0FDF4",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#D1FAE5",
+  },
+});
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F9FAFB" },

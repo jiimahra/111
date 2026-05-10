@@ -14,9 +14,20 @@
       "backgroundColor": "#E85D04"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Sahara को voice call के लिए microphone access चाहिए।",
+        "NSCameraUsageDescription": "Sahara को video call के लिए camera access चाहिए।"
+      }
     },
-    "android": {},
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET"
+      ]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },

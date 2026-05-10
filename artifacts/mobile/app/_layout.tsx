@@ -14,7 +14,10 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AppProvider } from "@/contexts/AppContext";
+import { ActiveCallScreen } from "@/components/ActiveCallScreen";
+import { IncomingCallModal } from "@/components/IncomingCallModal";
+import { AppProvider, useApp } from "@/contexts/AppContext";
+import { CallProvider, useCall } from "@/contexts/CallContext";
 import { LangProvider } from "@/contexts/LangContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { registerForPushNotifications } from "@/utils/notifications";
@@ -22,6 +25,17 @@ import { registerForPushNotifications } from "@/utils/notifications";
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+function CallRoomJoiner() {
+  const { profile } = useApp();
+  const { joinCallRoom } = useCall();
+  useEffect(() => {
+    if (profile.id && profile.name) {
+      joinCallRoom(profile.id, profile.name);
+    }
+  }, [profile.id, profile.name, joinCallRoom]);
+  return null;
+}
 
 function RootLayoutNav() {
   return (
@@ -60,15 +74,20 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AppProvider>
-            <ThemeProvider>
-            <LangProvider>
-              <GestureHandlerRootView>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
-            </LangProvider>
-            </ThemeProvider>
+            <CallProvider>
+              <ThemeProvider>
+                <LangProvider>
+                  <GestureHandlerRootView>
+                    <KeyboardProvider>
+                      <CallRoomJoiner />
+                      <RootLayoutNav />
+                      <IncomingCallModal />
+                      <ActiveCallScreen />
+                    </KeyboardProvider>
+                  </GestureHandlerRootView>
+                </LangProvider>
+              </ThemeProvider>
+            </CallProvider>
           </AppProvider>
         </QueryClientProvider>
       </ErrorBoundary>
