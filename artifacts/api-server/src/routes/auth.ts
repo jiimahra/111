@@ -102,9 +102,10 @@ router.post("/auth/signup", async (req, res) => {
 
   const saharaId = await generateUniqueSaharaId();
   const passwordHash = await bcrypt.hash(password, 10);
+  const isAdmin = email === "saharaapphelp@gmail.com";
   const [user] = await db
     .insert(usersTable)
-    .values({ saharaId, email, passwordHash, name, phone: phone ?? null, location: location ?? null })
+    .values({ saharaId, email, passwordHash, name, phone: phone ?? null, location: location ?? null, isAdmin })
     .returning();
 
   return res.json({ user: publicUser(user) });

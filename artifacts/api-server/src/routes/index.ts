@@ -6,6 +6,7 @@ import authRouter from "./auth";
 import socialRouter from "./social";
 import requestsRouter from "./requests";
 import uploadRouter from "./upload";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(authRouter);
 router.use(socialRouter);
 router.use(requestsRouter);
 router.use(uploadRouter);
+router.use(adminRouter);
 
 export default router;

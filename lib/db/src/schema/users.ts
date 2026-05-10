@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -13,6 +13,7 @@ export const usersTable = pgTable("users", {
   resetCodeExpiresAt: timestamp("reset_code_expires_at", { withTimezone: true }),
   lastSeen: timestamp("last_seen", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  isAdmin: boolean("is_admin").notNull().default(false),
 });
 
 export type User = typeof usersTable.$inferSelect;
