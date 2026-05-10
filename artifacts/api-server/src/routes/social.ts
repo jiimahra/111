@@ -15,7 +15,7 @@ router.get("/social/users", async (req, res) => {
   if (!userId) return res.status(400).json({ error: "userId required" });
 
   const allUsers = await db
-    .select({ id: usersTable.id, saharaId: usersTable.saharaId, name: usersTable.name, location: usersTable.location })
+    .select({ id: usersTable.id, saharaId: usersTable.saharaId, name: usersTable.name, location: usersTable.location, photoUrl: usersTable.photoUrl })
     .from(usersTable)
     .where(ne(usersTable.id, userId));
 
@@ -106,6 +106,7 @@ router.get("/social/friend-requests", async (req, res) => {
       fromId: usersTable.id,
       fromName: usersTable.name,
       fromLocation: usersTable.location,
+      fromPhotoUrl: usersTable.photoUrl,
     })
     .from(friendRequestsTable)
     .innerJoin(usersTable, eq(usersTable.id, friendRequestsTable.fromUserId))
@@ -120,7 +121,7 @@ router.get("/social/friend-requests", async (req, res) => {
     rows.map((r) => ({
       id: r.id,
       createdAt: r.createdAt,
-      from: { id: r.fromId, name: r.fromName, location: r.fromLocation },
+      from: { id: r.fromId, name: r.fromName, location: r.fromLocation, photoUrl: r.fromPhotoUrl },
     })),
   );
 });
@@ -150,7 +151,7 @@ router.get("/social/friends", async (req, res) => {
   if (friendIds.length === 0) return res.json([]);
 
   const friends = await db
-    .select({ id: usersTable.id, name: usersTable.name, location: usersTable.location })
+    .select({ id: usersTable.id, name: usersTable.name, location: usersTable.location, photoUrl: usersTable.photoUrl })
     .from(usersTable)
     .where(
       or(...friendIds.map((id) => eq(usersTable.id, id))),

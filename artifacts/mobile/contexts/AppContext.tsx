@@ -37,6 +37,7 @@ export interface UserProfile {
   helpedCount: number;
   requestsPosted: number;
   photoUri?: string;
+  photoUrl?: string;
 }
 
 interface AppContextType {
@@ -47,7 +48,7 @@ interface AppContextType {
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string }) => void;
+  setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => void;
   logout: () => void;
   loading: boolean;
   refreshRequests: () => Promise<void>;
@@ -185,7 +186,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setAuthedProfile = useCallback(
-    (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string }) => {
+    (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => {
       const newProfile: UserProfile = {
         id: user.id,
         saharaId: user.saharaId,
@@ -195,6 +196,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         location: user.location || "Ajmer",
         helpedCount: profile.helpedCount,
         requestsPosted: profile.requestsPosted,
+        photoUrl: user.photoUrl ?? undefined,
+        photoUri: user.photoUrl ?? undefined,
       };
       setProfile(newProfile);
       void saveProfile(newProfile);

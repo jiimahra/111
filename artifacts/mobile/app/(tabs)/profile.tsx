@@ -459,7 +459,8 @@ export default function ProfileScreen() {
   const [editName, setEditName] = useState(profile.name);
   const [editPhone, setEditPhone] = useState(profile.phone);
   const [editLocation, setEditLocation] = useState(profile.location);
-  const [photoUri, setPhotoUri] = useState(profile.photoUri ?? "");
+  const [photoUri, setPhotoUri] = useState(profile.photoUri ?? profile.photoUrl ?? "");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const myRequests = requests.filter((r) => r.userId === profile.id);
 
@@ -481,9 +482,28 @@ export default function ProfileScreen() {
       quality: 0.7,
     });
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      updateProfile({ photoUri: uri });
+      const asset = result.assets[0];
+      setPhotoUri(asset.uri);
+      setUploadingPhoto(true);
+      try {
+        const API_BASE =
+          process.env.EXPO_PUBLIC_API_URL ??
+          (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
+        const formData = new FormData();
+        formData.append("files", { uri: asset.uri, name: "photo.jpg", type: "image/jpeg" } as any);
+        const uploadRes = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: formData });
+        const uploadData = await uploadRes.json();
+        const photoUrl: string = uploadData.urls?.[0];
+        if (photoUrl) {
+          await authApi.updatePhoto({ userId: profile.id, photoUrl });
+          updateProfile({ photoUri: photoUrl, photoUrl });
+          setPhotoUri(photoUrl);
+        }
+      } catch {
+        updateProfile({ photoUri: asset.uri });
+      } finally {
+        setUploadingPhoto(false);
+      }
     }
   }
 
@@ -503,7 +523,7 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={["#22C55E", "#16A34A"]} style={styles.profileBanner}>
-          <TouchableOpacity onPress={pickPhoto} style={styles.avatarWrap}>
+          <TouchableOpacity onPress={pickPhoto} style={styles.avatarWrap} disabled={uploadingPhoto}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.avatar} />
             ) : (
@@ -512,7 +532,10 @@ export default function ProfileScreen() {
               </View>
             )}
             <View style={styles.avatarEditBadge}>
-              <Feather name="camera" size={11} color="#fff" />
+              {uploadingPhoto
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="camera" size={11} color="#fff" />
+              }
             </View>
           </TouchableOpacity>
 

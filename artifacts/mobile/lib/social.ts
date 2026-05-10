@@ -26,13 +26,14 @@ export interface SocialUser {
   saharaId: string;
   name: string;
   location: string | null;
+  photoUrl?: string | null;
   requestStatus: "none" | "sent" | "received" | "friends";
   requestId?: string;
 }
 
 export interface FriendRequest {
   id: string;
-  from: { id: string; name: string; location: string | null };
+  from: { id: string; name: string; location: string | null; photoUrl?: string | null };
   createdAt: string;
 }
 
@@ -40,6 +41,7 @@ export interface Friend {
   id: string;
   name: string;
   location: string | null;
+  photoUrl?: string | null;
   unreadCount: number;
 }
 

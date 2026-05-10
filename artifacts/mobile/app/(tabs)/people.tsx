@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -216,8 +217,17 @@ export default function PeopleScreen() {
   );
 }
 
-function Avatar({ name, size = 44 }: { name: string; size?: number }) {
+function Avatar({ name, photoUrl, size = 44 }: { name: string; photoUrl?: string | null; size?: number }) {
   const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  if (photoUrl) {
+    return (
+      <Image
+        source={{ uri: photoUrl }}
+        style={{ width: size, height: size, borderRadius: size / 2 }}
+        contentFit="cover"
+      />
+    );
+  }
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
       <Text style={[styles.avatarText, { fontSize: size * 0.38 }]}>{initials}</Text>
@@ -238,7 +248,7 @@ function UserCard({ user, busy, onSend, onCancel, onChat }: {
 
   return (
     <View style={styles.card}>
-      <Avatar name={user.name} />
+      <Avatar name={user.name} photoUrl={user.photoUrl} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.cardName}>{user.name}</Text>
         <Text style={styles.saharaIdBadge}>
@@ -297,7 +307,7 @@ function RequestCard({ request, busyAccept, busyDecline, onAccept, onDecline }: 
 }) {
   return (
     <View style={styles.card}>
-      <Avatar name={request.from.name} />
+      <Avatar name={request.from.name} photoUrl={request.from.photoUrl} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={styles.cardName}>{request.from.name}</Text>
         {request.from.location ? (
@@ -325,7 +335,7 @@ function RequestCard({ request, busyAccept, busyDecline, onAccept, onDecline }: 
 function FriendCard({ friend, onChat }: { friend: Friend; onChat: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onChat} activeOpacity={0.75}>
-      <Avatar name={friend.name} />
+      <Avatar name={friend.name} photoUrl={friend.photoUrl} />
       {friend.unreadCount > 0 && (
         <View style={styles.unreadDot}>
           <Text style={styles.unreadDotText}>{friend.unreadCount}</Text>

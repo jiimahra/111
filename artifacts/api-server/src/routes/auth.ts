@@ -75,6 +75,7 @@ function publicUser(u: {
   name: string;
   phone: string | null;
   location: string | null;
+  photoUrl?: string | null;
 }) {
   return {
     id: u.id,
@@ -83,6 +84,7 @@ function publicUser(u: {
     name: u.name,
     phone: u.phone ?? "",
     location: u.location ?? "",
+    photoUrl: u.photoUrl ?? null,
   };
 }
 
@@ -324,6 +326,13 @@ router.post("/auth/reset-password", async (req, res) => {
     .where(eq(usersTable.id, user.id));
 
   return res.json({ user: publicUser(user) });
+});
+
+router.patch("/auth/photo", async (req, res) => {
+  const { userId, photoUrl } = req.body as { userId?: string; photoUrl?: string };
+  if (!userId || !photoUrl) return res.status(400).json({ error: "Missing fields" });
+  await db.update(usersTable).set({ photoUrl }).where(eq(usersTable.id, userId));
+  res.json({ ok: true });
 });
 
 export default router;

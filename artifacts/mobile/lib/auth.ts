@@ -11,6 +11,26 @@ export interface AuthUser {
   name: string;
   phone: string;
   location: string;
+  photoUrl?: string | null;
+}
+
+async function patchJson<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}/api${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    /* no-op */
+  }
+  if (!res.ok) {
+    const msg = data?.error ?? `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return data as T;
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -56,5 +76,8 @@ export const authApi = {
   },
   resetPassword(input: { email: string; code: string; newPassword: string }) {
     return postJson<{ user: AuthUser }>("/auth/reset-password", input);
+  },
+  updatePhoto(input: { userId: string; photoUrl: string }) {
+    return patchJson<{ ok: true }>("/auth/photo", input);
   },
 };
