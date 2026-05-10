@@ -100,7 +100,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadData = async () => {
     try {
       const profileStr = await AsyncStorage.getItem(PROFILE_KEY);
-      if (profileStr) setProfile(JSON.parse(profileStr) as UserProfile);
+      if (profileStr) {
+        const cached = JSON.parse(profileStr) as UserProfile;
+        setProfile(cached);
+        if (cached.id) {
+          try {
+            const res = await fetch(`${API_BASE}/api/auth/me?userId=${cached.id}`);
+            if (res.ok) {
+              const { user } = await res.json() as { user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null } };
+              const refreshed: UserProfile = {
+                ...cached,
+                name: user.name,
+                email: user.email,
+                phone: user.phone ?? cached.phone,
+                location: user.location ?? cached.location,
+                photoUrl: user.photoUrl ?? undefined,
+                photoUri: user.photoUrl ?? undefined,
+              };
+              setProfile(refreshed);
+              void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(refreshed));
+            }
+          } catch {
+          }
+        }
+      }
       await fetchRequests();
     } catch {
       await fetchRequests();
