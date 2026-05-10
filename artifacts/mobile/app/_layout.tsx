@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppProvider } from "@/contexts/AppContext";
 import { LangProvider } from "@/contexts/LangContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { registerForPushNotifications } from "@/utils/notifications";
 
 SplashScreen.preventAutoHideAsync();
@@ -59,6 +60,7 @@ export default function RootLayout() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AppProvider>
+            <ThemeProvider>
             <LangProvider>
               <GestureHandlerRootView>
                 <KeyboardProvider>
@@ -66,6 +68,7 @@ export default function RootLayout() {
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </LangProvider>
+            </ThemeProvider>
           </AppProvider>
         </QueryClientProvider>
       </ErrorBoundary>

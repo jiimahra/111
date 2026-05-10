@@ -492,13 +492,6 @@ export default function ProfileScreen() {
     setEditing(false);
   }
 
-  function confirmLogout() {
-    Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: logout },
-    ]);
-  }
-
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
@@ -610,10 +603,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        <TouchableOpacity style={[styles.logoutBtn, { borderColor: border }]} onPress={confirmLogout}>
-          <Feather name="log-out" size={16} color="#DC2626" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );

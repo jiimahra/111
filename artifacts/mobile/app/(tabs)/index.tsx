@@ -4,7 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
-  Animated,
+  Alert,
   FlatList,
   Image as RNImage,
   Modal,
@@ -17,13 +17,13 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  useColorScheme,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HelpRequest, useApp } from "@/contexts/AppContext";
 import { useLang } from "@/contexts/LangContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 
 const CATEGORIES = [
@@ -204,8 +204,8 @@ function MenuDrawer({
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const [darkMode, setDarkMode] = useState(colorScheme === "dark");
+  const { isDark, toggleTheme } = useTheme();
+  const { logout, profile } = useApp();
 
   const menuItems = [
     { icon: "home" as const, label: "Home", labelHi: "होम", onPress: () => { onClose(); router.push("/(tabs)/"); } },
@@ -275,8 +275,8 @@ function MenuDrawer({
                     <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>डार्क मोड</Text>
                   </View>
                   <Switch
-                    value={darkMode}
-                    onValueChange={setDarkMode}
+                    value={isDark}
+                    onValueChange={toggleTheme}
                     trackColor={{ false: "#E5E7EB", true: "#059669" }}
                     thumbColor="#fff"
                   />
@@ -324,8 +324,27 @@ function MenuDrawer({
                   <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
-                <View style={{ height: 32 }} />
+                <View style={{ height: 16 }} />
               </ScrollView>
+
+              {/* Logout Button */}
+              {!!profile.id && (
+                <TouchableOpacity
+                  style={[styles.drawerLogoutBtn, { borderTopColor: colors.border }]}
+                  onPress={() => {
+                    Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
+                      { text: "Cancel", style: "cancel" },
+                      { text: "Logout", style: "destructive", onPress: () => { onClose(); logout(); } },
+                    ]);
+                  }}
+                >
+                  <Feather name="log-out" size={18} color="#DC2626" />
+                  <View>
+                    <Text style={styles.drawerLogoutText}>Logout</Text>
+                    <Text style={[styles.drawerItemHi, { color: "#EF4444" }]}>लॉगआउट</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
 
               {/* Footer */}
               <View style={[styles.drawerFooter, { borderTopColor: colors.border, paddingBottom: insets.bottom + 16 }]}>
@@ -752,6 +771,15 @@ const styles = StyleSheet.create({
   },
   drawerItemLabel: { fontSize: 14, fontWeight: "700" },
   drawerItemHi: { fontSize: 11, marginTop: 1 },
+  drawerLogoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  drawerLogoutText: { fontSize: 14, fontWeight: "700", color: "#DC2626" },
   drawerFooter: {
     paddingHorizontal: 20,
     paddingTop: 14,
