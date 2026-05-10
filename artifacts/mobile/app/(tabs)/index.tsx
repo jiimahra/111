@@ -334,10 +334,16 @@ function MenuDrawer({
                   onPress={() => {
                     onClose();
                     setTimeout(() => {
-                      Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
-                        { text: "Cancel", style: "cancel" },
-                        { text: "Logout", style: "destructive", onPress: logout },
-                      ]);
+                      if (Platform.OS === "web") {
+                        if (typeof window !== "undefined" && window.confirm("Kya aap logout karna chahte hain?")) {
+                          logout();
+                        }
+                      } else {
+                        Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
+                          { text: "Cancel", style: "cancel" },
+                          { text: "Logout", style: "destructive", onPress: logout },
+                        ]);
+                      }
                     }, 300);
                   }}
                 >
