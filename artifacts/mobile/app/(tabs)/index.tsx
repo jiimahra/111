@@ -332,10 +332,13 @@ function MenuDrawer({
                 <TouchableOpacity
                   style={[styles.drawerLogoutBtn, { borderTopColor: colors.border }]}
                   onPress={() => {
-                    Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Logout", style: "destructive", onPress: () => { onClose(); logout(); } },
-                    ]);
+                    onClose();
+                    setTimeout(() => {
+                      Alert.alert("Logout", "Kya aap logout karna chahte hain?", [
+                        { text: "Cancel", style: "cancel" },
+                        { text: "Logout", style: "destructive", onPress: logout },
+                      ]);
+                    }, 300);
                   }}
                 >
                   <Feather name="log-out" size={18} color="#DC2626" />
