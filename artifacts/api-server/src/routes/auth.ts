@@ -210,6 +210,15 @@ router.get("/auth/google/callback", async (req, res) => {
       }
     }
 
+    // Ban check — block banned users from Google login too
+    if (user.blockedUntil) {
+      const isPermanent = user.blockedUntil.getFullYear() >= 9999;
+      const params = new URLSearchParams({ g_error: "account_blocked" });
+      if (!isPermanent) params.set("blocked_until", user.blockedUntil.toISOString());
+      if (user.blockReason) params.set("block_reason", user.blockReason);
+      return res.redirect(`${appBase}?${params.toString()}`);
+    }
+
     const token = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
     pendingGoogleTokens.set(token, { user: publicUser(user), expires: Date.now() + 5 * 60 * 1000 });
     return res.redirect(`${appBase}?g_token=${token}`);
@@ -252,6 +261,16 @@ router.post("/auth/google", async (req, res) => {
     return res.status(404).json({ error: "no_account", message: "Koi account nahi mila is Google email se. Pehle Sign Up karein." });
   }
 
+  if (existing.blockedUntil) {
+    const isPermanent = existing.blockedUntil.getFullYear() >= 9999;
+    return res.status(403).json({
+      error: "account_blocked",
+      blockedUntil: isPermanent ? null : existing.blockedUntil.toISOString(),
+      isPermanent,
+      blockReason: existing.blockReason ?? null,
+    });
+  }
+
   return res.json({ user: publicUser(existing) });
 });
 
@@ -270,6 +289,15 @@ router.post("/auth/google-signup", async (req, res) => {
   const email = googleUser.email.toLowerCase().trim();
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing) {
+    if (existing.blockedUntil) {
+      const isPermanent = existing.blockedUntil.getFullYear() >= 9999;
+      return res.status(403).json({
+        error: "account_blocked",
+        blockedUntil: isPermanent ? null : existing.blockedUntil.toISOString(),
+        isPermanent,
+        blockReason: existing.blockReason ?? null,
+      });
+    }
     return res.json({ user: publicUser(existing) });
   }
 

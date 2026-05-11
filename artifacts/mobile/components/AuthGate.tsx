@@ -63,6 +63,19 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           { text: "Cancel", style: "cancel" },
           { text: "Sign Up", onPress: () => setMode("signup") },
         ]);
+      } else if (gError === "account_blocked") {
+        const blockedUntil = params.get("blocked_until");
+        const blockReason = params.get("block_reason");
+        const isPermanent = !blockedUntil;
+        let msg = "Aapka account band kar diya gaya hai.";
+        if (!isPermanent && blockedUntil) {
+          const d = new Date(blockedUntil);
+          msg = `Aapka account ${d.toLocaleDateString("hi-IN")} tak band hai.`;
+        } else {
+          msg = "Aapka account permanently band kar diya gaya hai.";
+        }
+        if (blockReason) msg += `\n\nKaran: ${blockReason}`;
+        Alert.alert("Account Suspended", msg);
       } else if (gError !== "cancelled") {
         Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
       }
