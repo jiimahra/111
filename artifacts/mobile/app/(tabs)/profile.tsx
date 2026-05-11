@@ -253,7 +253,6 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   // ── ALL state hooks at top ────────────────────────────────────────────────
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
-  const [loginBan, setLoginBan] = useState<BanInfo | null>(null);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -272,15 +271,23 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const [resetNewPw, setResetNewPw] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
 
-  // ── Core ban handler — saves to AsyncStorage then navigates to /ban ─────────
+  // ── Core ban handler — saves to AsyncStorage then navigates to /ban with params ─
   async function showBan(ban: BanInfo) {
     setBanInfo(ban);
-    setLoginBan(ban);
     setLoading(false);
     try {
       await AsyncStorage.setItem("@sahara/ban_info_v1", JSON.stringify(ban));
     } catch { /**/ }
-    router.push("/ban");
+    router.push({
+      pathname: "/ban",
+      params: {
+        blockedUntil: ban.blockedUntil ?? "",
+        isPermanent:  ban.isPermanent ? "1" : "0",
+        blockReason:  ban.blockReason ?? "",
+        userEmail:    ban.userEmail   ?? "",
+        userName:     ban.userName    ?? "",
+      },
+    });
   }
 
   // ── Direct fetch login — bypasses authApi so ban is detected on raw response
@@ -392,23 +399,6 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const fg = colors.foreground;
   const muted = colors.mutedForeground;
   const border = colors.border;
-
-  // ── Ban screen — shown BEFORE everything else ─────────────────────────────
-  if (loginBan) {
-    return (
-      <BanScreen
-        ban={loginBan}
-        onTryAgain={() => {
-          if (!loginBan.isPermanent && loginBan.blockedUntil && new Date(loginBan.blockedUntil) <= new Date()) {
-            setLoginBan(null);
-            setBanInfo(null);
-          } else {
-            Alert.alert("अभी भी Ban है", "Ban abhi khatam nahi hua. Baad mein try karein ya email karein.");
-          }
-        }}
-      />
-    );
-  }
 
   if (forgotMode) {
     return (
