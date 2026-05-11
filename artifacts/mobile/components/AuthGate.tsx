@@ -122,8 +122,34 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!email.trim() || !password) return showError("Please enter email and password.");
     setBusy(true);
     try {
-      const { user } = await authApi.login({ email, password });
-      setAuthedProfile(user);
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json() as any;
+      if (!res.ok) {
+        if (data.error === "account_blocked") {
+          const isPermanent = data.isPermanent as boolean;
+          let untilText = "";
+          if (!isPermanent && data.blockedUntil) {
+            const d = new Date(data.blockedUntil as string);
+            untilText = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear()}`;
+          }
+          const durationMsg = isPermanent
+            ? "permanently"
+            : `${untilText} tak ke liye`;
+          const reasonPart = data.blockReason ? `\n\nKaran: ${data.blockReason}` : "";
+          Alert.alert(
+            "Account Block Ho Gaya",
+            `Aapki ID ${durationMsg} block kar di gayi hai.${reasonPart}\n\nUnblock karane ke liye hamari team se sampark karein:\nsaharaapphelp@gmail.com`,
+            [{ text: "Samajh Gaya", style: "default" }]
+          );
+          return;
+        }
+        throw new Error(data.error ?? "Login failed");
+      }
+      setAuthedProfile(data.user);
     } catch (e: any) {
       showError(e.message || "Login failed");
     } finally {

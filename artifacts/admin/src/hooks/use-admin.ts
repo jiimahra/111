@@ -28,6 +28,8 @@ export interface User {
   createdAt: string;
   lastSeen: string | null;
   isAdmin: boolean | null;
+  blockedUntil: string | null;
+  blockReason: string | null;
 }
 
 export interface Request {
@@ -104,6 +106,46 @@ export const useDeleteUser = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] });
       queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    },
+  });
+};
+
+export const useBlockUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, duration, reason }: { id: string; duration: string; reason?: string }) => {
+      const userId = getUserId();
+      if (!userId) throw new Error("Unauthorized");
+      const res = await fetch(`/api/admin/users/${id}/block?userId=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration, reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to block user");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
+  });
+};
+
+export const useUnblockUser = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const userId = getUserId();
+      if (!userId) throw new Error("Unauthorized");
+      const res = await fetch(`/api/admin/users/${id}/unblock?userId=${userId}`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to unblock user");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
     },
   });
 };

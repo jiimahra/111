@@ -128,6 +128,17 @@ router.post("/auth/login", async (req, res) => {
     return res.status(401).json({ error: "Wrong password. Try again or use Forgot Password." });
   }
 
+  if (user.blockedUntil) {
+    const isPermanent = user.blockedUntil.getFullYear() >= 9999;
+    const blockedUntilStr = isPermanent ? null : user.blockedUntil.toISOString();
+    return res.status(403).json({
+      error: "account_blocked",
+      blockedUntil: blockedUntilStr,
+      isPermanent,
+      blockReason: user.blockReason ?? null,
+    });
+  }
+
   return res.json({ user: publicUser(user) });
 });
 

@@ -107,12 +107,72 @@ router.get("/admin/users", async (req, res) => {
         createdAt: usersTable.createdAt,
         lastSeen: usersTable.lastSeen,
         isAdmin: usersTable.isAdmin,
+        blockedUntil: usersTable.blockedUntil,
+        blockReason: usersTable.blockReason,
       })
       .from(usersTable)
       .orderBy(desc(usersTable.createdAt));
     res.json({ users });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+router.post("/admin/users/:id/block", async (req, res) => {
+  try {
+    const { userId } = req.query as { userId?: string };
+    if (!userId || !(await verifyAdmin(userId))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const { id } = req.params;
+    if (id === userId) {
+      res.status(400).json({ error: "Apna account block nahi kar sakte" });
+      return;
+    }
+    const { duration, reason } = req.body as { duration?: string; reason?: string };
+    const validDurations = ["3m", "6m", "12m", "5y", "permanent"];
+    if (!duration || !validDurations.includes(duration)) {
+      res.status(400).json({ error: "Valid duration required: 3m, 6m, 12m, 5y, permanent" });
+      return;
+    }
+    let blockedUntil: Date;
+    const now = new Date();
+    if (duration === "3m") {
+      blockedUntil = new Date(now.setMonth(now.getMonth() + 3));
+    } else if (duration === "6m") {
+      blockedUntil = new Date(now.setMonth(now.getMonth() + 6));
+    } else if (duration === "12m") {
+      blockedUntil = new Date(now.setMonth(now.getMonth() + 12));
+    } else if (duration === "5y") {
+      blockedUntil = new Date(now.setFullYear(now.getFullYear() + 5));
+    } else {
+      blockedUntil = new Date("9999-12-31T23:59:59Z");
+    }
+    await db
+      .update(usersTable)
+      .set({ blockedUntil, blockReason: reason ?? null })
+      .where(eq(usersTable.id, id));
+    res.json({ ok: true, blockedUntil });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to block user" });
+  }
+});
+
+router.post("/admin/users/:id/unblock", async (req, res) => {
+  try {
+    const { userId } = req.query as { userId?: string };
+    if (!userId || !(await verifyAdmin(userId))) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    await db
+      .update(usersTable)
+      .set({ blockedUntil: null, blockReason: null })
+      .where(eq(usersTable.id, req.params.id));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to unblock user" });
   }
 });
 
