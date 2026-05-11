@@ -296,11 +296,27 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
       setAuthedProfile(user);
     } catch (err: any) {
       if (err.banInfo) {
-        // Show ban screen immediately via local state (guaranteed instant render)
         const ban: BanInfo = { ...err.banInfo, userEmail: loginEmail.trim() };
+        // 1) Set state so BanScreen renders
         setLoginBan(ban);
-        setBanInfo(ban); // also persist in AppContext
+        setBanInfo(ban);
         setLoading(false);
+        // 2) Also show Alert as guaranteed fallback (works even before re-render)
+        const durText = ban.isPermanent
+          ? "Permanent Ban"
+          : ban.blockedUntil
+          ? (() => {
+              const days = Math.ceil((new Date(ban.blockedUntil).getTime() - Date.now()) / 86400000);
+              if (days >= 365) return `${Math.floor(days / 365)} saal ke liye Ban`;
+              if (days >= 30) return `${Math.floor(days / 30)} mahine ke liye Ban`;
+              return `${days} din ke liye Ban`;
+            })()
+          : "Ban hai";
+        Alert.alert(
+          "⛔ Account Ban Hai",
+          `${durText}\n\nApeel ya sahayta ke liye email karein:\nsaharaapphelp@gmail.com`,
+          [{ text: "Samajh Gaya", style: "default" }]
+        );
         return;
       }
       Alert.alert("Login Failed", err.message ?? "Login nahi ho paya.");
