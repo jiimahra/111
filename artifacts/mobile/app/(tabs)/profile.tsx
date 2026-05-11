@@ -55,9 +55,39 @@ function BanScreen({ ban, onTryAgain }: { ban: BanInfo; onTryAgain: () => void }
         <Text style={{ fontSize: 22, fontWeight: "800", color: "#fff", textAlign: "center", marginBottom: 6 }}>
           Account Ban कर दिया गया है
         </Text>
-        <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
+        <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", textAlign: "center", marginBottom: 10 }}>
           {ban.userEmail || ban.userName || ""}
         </Text>
+
+        {/* ── Sahara ID chip — tappable to copy ── */}
+        {ban.saharaId ? (
+          <TouchableOpacity
+            onPress={() => {
+              void Clipboard.setStringAsync(ban.saharaId!);
+              Alert.alert("Copied! ✅", `Sahara ID: ${ban.saharaId} copy हो गई`);
+            }}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: "row", alignItems: "center", gap: 8,
+              backgroundColor: "rgba(255,255,255,0.2)",
+              borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+              borderWidth: 1.5, borderColor: "rgba(255,255,255,0.35)",
+            }}
+          >
+            <View style={{
+              backgroundColor: "rgba(255,255,255,0.25)",
+              borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+            }}>
+              <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.95)", fontWeight: "800", letterSpacing: 1 }}>
+                SAHARA ID
+              </Text>
+            </View>
+            <Text style={{ fontSize: 18, fontWeight: "900", color: "#fff", letterSpacing: 1.5 }}>
+              #{ban.saharaId}
+            </Text>
+            <Feather name="copy" size={14} color="rgba(255,255,255,0.75)" />
+          </TouchableOpacity>
+        ) : null}
       </LinearGradient>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>

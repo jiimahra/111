@@ -48,6 +48,7 @@ export interface BanInfo {
   blockReason: string | null;
   userName?: string;
   userEmail?: string;
+  saharaId?: string;
 }
 
 interface AppContextType {
@@ -126,6 +127,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             blockReason: data.blockReason ?? null,
             userName: data.userName ?? userName,
             userEmail,
+            saharaId: data.saharaId ?? "",
           };
           void AsyncStorage.setItem(BAN_KEY, JSON.stringify(ban));
           setBanInfoState(ban);
@@ -233,6 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   blockReason: data.blockReason ?? null,
                   userName: data.userName ?? cached.name,
                   userEmail: cached.email,
+                  saharaId: data.saharaId ?? "",
                 };
                 void AsyncStorage.setItem(BAN_KEY, JSON.stringify(ban));
                 setBanInfoState(ban);
