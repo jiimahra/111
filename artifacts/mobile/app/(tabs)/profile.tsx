@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -270,17 +272,15 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const [resetNewPw, setResetNewPw] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
 
-  // ── Core ban handler — called after every login attempt ───────────────────
-  function showBan(ban: BanInfo) {
+  // ── Core ban handler — saves to AsyncStorage then navigates to /ban ─────────
+  async function showBan(ban: BanInfo) {
     setBanInfo(ban);
     setLoginBan(ban);
     setLoading(false);
-    const dur = buildBanDurText(ban);
-    Alert.alert(
-      "⛔ Account Ban Hai",
-      `${dur}\n\nApeel ke liye email karein:\nsaharaapphelp@gmail.com`,
-      [{ text: "Theek Hai" }]
-    );
+    try {
+      await AsyncStorage.setItem("@sahara/ban_info_v1", JSON.stringify(ban));
+    } catch { /**/ }
+    router.push("/ban");
   }
 
   // ── Direct fetch login — bypasses authApi so ban is detected on raw response
@@ -297,7 +297,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
 
       if (!res.ok) {
         if (data?.error === "account_blocked") {
-          showBan({
+          await showBan({
             blockedUntil: data.blockedUntil ?? null,
             isPermanent:  data.isPermanent  ?? false,
             blockReason:  data.blockReason  ?? null,
@@ -305,7 +305,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
           });
           return;
         }
-        Alert.alert("Login Failed", data?.error ?? `Server error (${res.status})`);
+        Alert.alert("Login विफल", data?.error ?? `Server error (${res.status})`);
         return;
       }
       setAuthedProfile(data.user);

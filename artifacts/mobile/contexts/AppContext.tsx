@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -126,10 +127,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           };
           // Save ban info persistently
           void AsyncStorage.setItem(BAN_KEY, JSON.stringify(ban));
-          // Force logout
+          // Force logout and navigate to ban screen
           setBanInfoState(ban);
           setProfile(DEFAULT_PROFILE);
           void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
+          try { router.push("/ban"); } catch { /**/ }
         }
       }
     } catch {
@@ -224,6 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 setBanInfoState(ban);
                 setProfile(DEFAULT_PROFILE);
                 void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
+                try { router.push("/ban"); } catch { /**/ }
               }
             }
           } catch {
