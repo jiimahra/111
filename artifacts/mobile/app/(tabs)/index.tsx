@@ -330,6 +330,20 @@ function MenuDrawer({
                   <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={[styles.drawerItem, { borderBottomColor: colors.border }]}
+                  onPress={() => { onClose(); router.push("/terms"); }}
+                >
+                  <View style={styles.drawerItemIcon}>
+                    <Feather name="file-text" size={18} color="#7C3AED" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Terms of Service</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>सेवा की शर्तें</Text>
+                  </View>
+                  <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+
                 <View style={{ height: 16 }} />
               </ScrollView>
 

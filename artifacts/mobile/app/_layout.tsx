@@ -45,6 +45,7 @@ function RootLayoutNav() {
       <Stack.Screen name="privacy" options={{ headerShown: false }} />
       <Stack.Screen name="about" options={{ headerShown: false }} />
       <Stack.Screen name="notifications-settings" options={{ headerShown: false }} />
+      <Stack.Screen name="terms" options={{ headerShown: false }} />
       <Stack.Screen
         name="chat/[userId]"
         options={{ headerShown: true, title: "Chat", headerTintColor: "#059669" }}
