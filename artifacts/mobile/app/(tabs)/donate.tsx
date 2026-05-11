@@ -17,6 +17,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "");
+
 interface Hospital {
   id: string;
   name: string;
@@ -33,115 +39,14 @@ interface Hospital {
   beds: string | null;
 }
 
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function estimateTime(km: number) {
-  const mins = Math.round((km / 35) * 60);
-  if (mins < 60) return `~${mins} मिनट`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m ? `~${h}h ${m}m` : `~${h} घंटा`;
-}
-
-// Nominatim: search hospitals/vets in a bounding box around user
-async function fetchNominatim(lat: number, lng: number, query: string, limit = 50) {
-  const deg = 0.9; // ~100km
-  const viewbox = `${lng - deg},${lat + deg},${lng + deg},${lat - deg}`;
-  const url =
-    `https://nominatim.openstreetmap.org/search` +
-    `?q=${encodeURIComponent(query)}` +
-    `&format=json&bounded=1&viewbox=${viewbox}&limit=${limit}&addressdetails=1&extratags=1`;
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": "SaharaApp/1.0 (community help India; contact@saharaapp.in)",
-      "Accept-Language": "hi,en",
-    },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
-  return res.json() as Promise<any[]>;
-}
-
-function parseNominatim(
-  items: any[],
-  lat: number,
-  lng: number,
-  defaultType: "hospital" | "vet"
-): Hospital[] {
-  return items
-    .map((item: any) => {
-      const elLat = parseFloat(item.lat);
-      const elLng = parseFloat(item.lon);
-      if (!elLat || !elLng) return null;
-      const name =
-        item.namedetails?.["name:hi"] ||
-        item.display_name?.split(",")[0] ||
-        "अज्ञात अस्पताल";
-      const extra = item.extratags || {};
-      const cat = item.type || item.class || "";
-      const isVet =
-        defaultType === "vet" ||
-        cat === "veterinary" ||
-        extra["healthcare"] === "veterinary";
-      const km = Math.round(haversineKm(lat, lng, elLat, elLng) * 10) / 10;
-      const addrParts = item.address || {};
-      const address = [
-        addrParts.road,
-        addrParts.suburb,
-        addrParts.city || addrParts.town || addrParts.village,
-        addrParts.state,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      return {
-        id: `nom-${item.place_id}`,
-        name,
-        type: (isVet ? "vet" : "hospital") as "hospital" | "vet",
-        address,
-        distanceKm: km,
-        distanceText: `${km.toFixed(1)} km`,
-        travelTime: estimateTime(km),
-        open: null,
-        phone: extra["phone"] || extra["contact:phone"] || null,
-        lat: elLat,
-        lng: elLng,
-        emergency: extra["emergency"] === "yes",
-        beds: extra["beds"] || null,
-      } satisfies Hospital;
-    })
-    .filter((h): h is Hospital => h !== null);
-}
-
 async function fetchNearbyHospitals(lat: number, lng: number): Promise<Hospital[]> {
-  // Run hospital + vet queries in parallel via Nominatim
-  const [hospItems, vetItems] = await Promise.all([
-    fetchNominatim(lat, lng, "hospital clinic", 60).catch(() => [] as any[]),
-    fetchNominatim(lat, lng, "veterinary vet clinic", 30).catch(() => [] as any[]),
-  ]);
-
-  const hospitals = parseNominatim(hospItems, lat, lng, "hospital");
-  const vets = parseNominatim(vetItems, lat, lng, "vet");
-
-  // Merge, deduplicate by name, sort by distance
-  const seen = new Set<string>();
-  return [...hospitals, ...vets]
-    .filter((h) => {
-      const key = h.name.toLowerCase().trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return h.distanceKm <= 100;
-    })
-    .sort((a, b) => a.distanceKm - b.distanceKm);
+  const res = await fetch(
+    `${API_BASE}/api/hospitals?lat=${lat}&lng=${lng}`,
+    { signal: AbortSignal.timeout(20000) }
+  );
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  const data = await res.json();
+  return data.hospitals as Hospital[];
 }
 
 function openDirections(lat: number, lng: number, name: string) {
