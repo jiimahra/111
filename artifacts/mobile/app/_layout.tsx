@@ -41,6 +41,7 @@ function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="ban" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="chat/[userId]"
         options={{ headerShown: true, title: "Chat", headerTintColor: "#059669" }}
