@@ -29,12 +29,20 @@ type Mode = "login" | "signup" | "forgot" | "reset";
 const BRAND_GREEN = "#7C3AED";
 const BRAND_DARK = "#2D0A6E";
 
+const GUEST_ACCOUNTS = [
+  { name: "Rahul Sharma", email: "guest1@saharatest.in", password: "sahara123", city: "Delhi", emoji: "👨" },
+  { name: "Priya Singh",  email: "guest2@saharatest.in", password: "sahara123", city: "Mumbai", emoji: "👩" },
+  { name: "Amit Kumar",   email: "guest3@saharatest.in", password: "sahara123", city: "Jaipur", emoji: "👦" },
+  { name: "Sunita Devi",  email: "guest4@saharatest.in", password: "sahara123", city: "Lucknow", emoji: "👧" },
+];
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { profile, setAuthedProfile, loading } = useApp();
   const insets = useSafeAreaInsets();
 
   const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState<number | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
@@ -213,6 +221,25 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleGuestLogin = async (idx: number) => {
+    const g = GUEST_ACCOUNTS[idx];
+    setGuestBusy(idx);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: g.email, password: g.password }),
+      });
+      const data = await res.json() as any;
+      if (!res.ok) throw new Error(data.error ?? "Login failed");
+      setAuthedProfile(data.user);
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Guest login failed");
+    } finally {
+      setGuestBusy(null);
+    }
+  };
+
   const isLogin = mode === "login";
   const isSignup = mode === "signup";
 
@@ -309,6 +336,37 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 <TouchableOpacity style={styles.outlineBtn} onPress={() => setMode("signup")}>
                   <Text style={styles.outlineBtnText}>Create new account</Text>
                 </TouchableOpacity>
+
+                {/* Guest Test Accounts */}
+                <View style={styles.guestSection}>
+                  <View style={styles.guestHeader}>
+                    <View style={styles.guestDividerLine} />
+                    <Text style={styles.guestHeaderText}>🧪 Test Accounts</Text>
+                    <View style={styles.guestDividerLine} />
+                  </View>
+                  <Text style={styles.guestSubText}>App test karne ke liye ek account chunein</Text>
+                  <View style={styles.guestGrid}>
+                    {GUEST_ACCOUNTS.map((g, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={[styles.guestCard, guestBusy === i && { opacity: 0.6 }]}
+                        onPress={() => handleGuestLogin(i)}
+                        disabled={guestBusy !== null}
+                        activeOpacity={0.8}
+                      >
+                        {guestBusy === i ? (
+                          <ActivityIndicator size="small" color="#7C3AED" />
+                        ) : (
+                          <>
+                            <Text style={styles.guestEmoji}>{g.emoji}</Text>
+                            <Text style={styles.guestName}>{g.name}</Text>
+                            <Text style={styles.guestCity}>{g.city}</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </>
             )}
 
@@ -663,6 +721,39 @@ const styles = StyleSheet.create({
     marginTop: 24,
     fontWeight: "500",
   },
+
+  guestSection: {
+    marginTop: 20,
+  },
+  guestHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  guestDividerLine: { flex: 1, height: 1, backgroundColor: "#E5E7EB" },
+  guestHeaderText: { fontSize: 11, fontWeight: "700", color: "#9CA3AF", letterSpacing: 0.5 },
+  guestSubText: { fontSize: 12, color: "#9CA3AF", textAlign: "center", marginBottom: 12 },
+  guestGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  guestCard: {
+    width: "48%",
+    backgroundColor: "#F5F3FF",
+    borderWidth: 1,
+    borderColor: "#DDD6FE",
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    gap: 4,
+    minHeight: 80,
+    justifyContent: "center",
+  },
+  guestEmoji: { fontSize: 24 },
+  guestName: { fontSize: 12, fontWeight: "700", color: "#4B5563", textAlign: "center" },
+  guestCity: { fontSize: 11, color: "#7C3AED", fontWeight: "600" },
 
   googleBtn: {
     flexDirection: "row",
