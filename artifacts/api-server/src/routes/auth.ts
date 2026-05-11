@@ -350,9 +350,22 @@ router.patch("/auth/photo", async (req, res) => {
 router.get("/auth/me", async (req, res) => {
   const userId = req.query.userId as string | undefined;
   if (!userId) return res.status(400).json({ error: "Missing userId" });
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
-  if (!user) return res.status(404).json({ error: "User not found" });
-  return res.json({ user: publicUser(user) });
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.blockedUntil) {
+      const isPermanent = user.blockedUntil.getFullYear() >= 9999;
+      return res.status(403).json({
+        error: "account_blocked",
+        blockedUntil: isPermanent ? null : user.blockedUntil.toISOString(),
+        isPermanent,
+        blockReason: user.blockReason ?? null,
+      });
+    }
+    return res.json({ user: publicUser(user) });
+  } catch {
+    return res.status(400).json({ error: "Invalid user ID" });
+  }
 });
 
 export default router;
