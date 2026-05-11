@@ -148,6 +148,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       blockReason:  data.blockReason ?? "",
       userEmail,
       userName:     data.userName ?? "",
+      saharaId:     data.saharaId ?? "",
     };
     try {
       await AsyncStorage.setItem("@sahara/ban_info_v1", JSON.stringify({
@@ -156,6 +157,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         blockReason:  data.blockReason ?? null,
         userEmail,
         userName:     data.userName ?? "",
+        saharaId:     data.saharaId ?? "",
       }));
     } catch { /**/ }
     router.push({ pathname: "/ban", params: ban });

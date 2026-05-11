@@ -116,22 +116,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           blockedUntil?: string | null;
           isPermanent?: boolean;
           blockReason?: string | null;
+          saharaId?: string;
+          userName?: string;
         };
         if (data.error === "account_blocked") {
           const ban: BanInfo = {
             blockedUntil: data.blockedUntil ?? null,
             isPermanent: data.isPermanent ?? false,
             blockReason: data.blockReason ?? null,
-            userName,
+            userName: data.userName ?? userName,
             userEmail,
           };
-          // Save ban info persistently
           void AsyncStorage.setItem(BAN_KEY, JSON.stringify(ban));
-          // Force logout and navigate to ban screen
           setBanInfoState(ban);
           setProfile(DEFAULT_PROFILE);
           void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
-          try { router.push("/ban"); } catch { /**/ }
+          try {
+            router.push({
+              pathname: "/ban",
+              params: {
+                blockedUntil: ban.blockedUntil ?? "",
+                isPermanent:  ban.isPermanent ? "1" : "0",
+                blockReason:  ban.blockReason ?? "",
+                userEmail:    ban.userEmail ?? "",
+                userName:     ban.userName ?? "",
+                saharaId:     data.saharaId ?? "",
+              },
+            });
+          } catch { /**/ }
         }
       }
     } catch {
@@ -213,20 +225,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(refreshed));
             } else if (res.status === 403) {
               // Blocked while loading — treat like block poll
-              const data = await res.json() as { error: string; blockedUntil?: string | null; isPermanent?: boolean; blockReason?: string | null };
+              const data = await res.json() as { error: string; blockedUntil?: string | null; isPermanent?: boolean; blockReason?: string | null; saharaId?: string; userName?: string };
               if (data.error === "account_blocked") {
                 const ban: BanInfo = {
                   blockedUntil: data.blockedUntil ?? null,
                   isPermanent: data.isPermanent ?? false,
                   blockReason: data.blockReason ?? null,
-                  userName: cached.name,
+                  userName: data.userName ?? cached.name,
                   userEmail: cached.email,
                 };
                 void AsyncStorage.setItem(BAN_KEY, JSON.stringify(ban));
                 setBanInfoState(ban);
                 setProfile(DEFAULT_PROFILE);
                 void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(DEFAULT_PROFILE));
-                try { router.push("/ban"); } catch { /**/ }
+                try {
+                  router.push({
+                    pathname: "/ban",
+                    params: {
+                      blockedUntil: ban.blockedUntil ?? "",
+                      isPermanent:  ban.isPermanent ? "1" : "0",
+                      blockReason:  ban.blockReason ?? "",
+                      userEmail:    ban.userEmail ?? "",
+                      userName:     ban.userName ?? "",
+                      saharaId:     data.saharaId ?? "",
+                    },
+                  });
+                } catch { /**/ }
               }
             }
           } catch {

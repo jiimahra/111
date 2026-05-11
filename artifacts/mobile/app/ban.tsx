@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
+import * as Clipboard from "expo-clipboard";
 import { Alert, Linking, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -15,6 +16,7 @@ interface BanData {
   blockReason: string | null;
   userEmail: string;
   userName: string;
+  saharaId: string;
 }
 
 function formatDuration(ban: BanData): string {
@@ -45,6 +47,7 @@ export default function BanScreen() {
     blockReason?: string;
     userEmail?: string;
     userName?: string;
+    saharaId?: string;
   }>();
 
   const [ban, setBan] = useState<BanData | null>(null);
@@ -58,6 +61,7 @@ export default function BanScreen() {
         blockReason: params.blockReason || null,
         userEmail: params.userEmail || "",
         userName: params.userName || "",
+        saharaId: params.saharaId || "",
       });
       return;
     }
@@ -129,7 +133,8 @@ export default function BanScreen() {
           Account Ban कर दिया गया है
         </Text>
 
-        {loading ? null : (
+        {loading ? null : (<>
+          {/* Email chip */}
           <View style={{
             backgroundColor: "rgba(255,255,255,0.15)",
             borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
@@ -139,7 +144,37 @@ export default function BanScreen() {
               {ban?.userEmail || "सहारा उपयोगकर्ता"}
             </Text>
           </View>
-        )}
+
+          {/* Sahara ID — prominent chip with copy */}
+          {ban?.saharaId ? (
+            <TouchableOpacity
+              onPress={() => {
+                void Clipboard.setStringAsync(ban.saharaId);
+                Alert.alert("Copied!", `Sahara ID: ${ban.saharaId} copy हो गई`);
+              }}
+              activeOpacity={0.75}
+              style={{
+                flexDirection: "row", alignItems: "center", gap: 8,
+                backgroundColor: "rgba(255,255,255,0.2)",
+                borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+                marginTop: 12, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.35)",
+              }}
+            >
+              <View style={{
+                backgroundColor: "rgba(255,255,255,0.25)",
+                borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+              }}>
+                <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.9)", fontWeight: "800", letterSpacing: 1 }}>
+                  SAHARA ID
+                </Text>
+              </View>
+              <Text style={{ fontSize: 18, fontWeight: "900", color: "#fff", letterSpacing: 1.5 }}>
+                #{ban.saharaId}
+              </Text>
+              <Feather name="copy" size={14} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+          ) : null}
+        </>)}
       </LinearGradient>
 
       {loading ? (

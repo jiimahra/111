@@ -136,6 +136,8 @@ router.post("/auth/login", async (req, res) => {
       blockedUntil: blockedUntilStr,
       isPermanent,
       blockReason: user.blockReason ?? null,
+      saharaId: user.saharaId,
+      userName: user.name,
     });
   }
 
@@ -388,6 +390,8 @@ router.get("/auth/me", async (req, res) => {
         blockedUntil: isPermanent ? null : user.blockedUntil.toISOString(),
         isPermanent,
         blockReason: user.blockReason ?? null,
+        saharaId: user.saharaId,
+        userName: user.name,
       });
     }
     return res.json({ user: publicUser(user) });
