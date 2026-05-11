@@ -46,6 +46,16 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     /* no-op */
   }
   if (!res.ok) {
+    // Special handling for account_blocked
+    if (data?.error === "account_blocked") {
+      const err: any = new Error("account_blocked");
+      err.banInfo = {
+        blockedUntil: data.blockedUntil ?? null,
+        isPermanent: data.isPermanent ?? false,
+        blockReason: data.blockReason ?? null,
+      };
+      throw err;
+    }
     const msg = data?.error ?? `Request failed (${res.status})`;
     throw new Error(msg);
   }

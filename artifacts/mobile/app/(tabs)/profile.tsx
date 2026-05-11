@@ -18,9 +18,117 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HelpRequest, RequestStatus, useApp } from "@/contexts/AppContext";
+import { BanInfo, HelpRequest, RequestStatus, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { authApi } from "@/lib/auth";
+
+// ─── Ban Screen ──────────────────────────────────────────────────────────────
+function BanScreen({ ban, onTryAgain }: { ban: BanInfo; onTryAgain: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+
+  function formatBanTime() {
+    if (ban.isPermanent || !ban.blockedUntil) return null;
+    const until = new Date(ban.blockedUntil);
+    const now = new Date();
+    const diffMs = until.getTime() - now.getTime();
+    if (diffMs <= 0) return null;
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (days >= 365) return `${Math.floor(days / 365)} साल`;
+    if (days >= 30) return `${Math.floor(days / 30)} महीने`;
+    return `${days} दिन`;
+  }
+
+  const timeLeft = formatBanTime();
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <LinearGradient
+        colors={["#1A0050", "#7C0000", "#DC2626"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingTop: insets.top + 20, paddingBottom: 32, paddingHorizontal: 20, alignItems: "center" }}
+      >
+        <Text style={{ fontSize: 56, marginBottom: 12 }}>⛔</Text>
+        <Text style={{ fontSize: 22, fontWeight: "800", color: "#fff", textAlign: "center", marginBottom: 6 }}>
+          Account Ban कर दिया गया है
+        </Text>
+        <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", textAlign: "center" }}>
+          {ban.userEmail || ban.userName || ""}
+        </Text>
+      </LinearGradient>
+
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+        {/* Ban Duration */}
+        <View style={{ backgroundColor: "#FEF2F2", borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: "#FECACA" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <Feather name="clock" size={18} color="#DC2626" />
+            <Text style={{ fontSize: 15, fontWeight: "700", color: "#DC2626" }}>Ban की अवधि</Text>
+          </View>
+          {ban.isPermanent ? (
+            <Text style={{ fontSize: 16, color: "#7F1D1D", fontWeight: "700" }}>
+              स्थायी (Permanent) Ban
+            </Text>
+          ) : (
+            <>
+              <Text style={{ fontSize: 16, color: "#7F1D1D", fontWeight: "700" }}>
+                {timeLeft ? `${timeLeft} के लिए Ban` : "अवधि समाप्त — दोबारा login करें"}
+              </Text>
+              {ban.blockedUntil && (
+                <Text style={{ fontSize: 12, color: "#991B1B", marginTop: 4 }}>
+                  {new Date(ban.blockedUntil).toLocaleDateString("hi-IN", { day: "numeric", month: "long", year: "numeric" })} तक
+                </Text>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Reason */}
+        {ban.blockReason && (
+          <View style={{ backgroundColor: "#FFF7ED", borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: "#FED7AA" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <Feather name="alert-triangle" size={16} color="#EA580C" />
+              <Text style={{ fontSize: 14, fontWeight: "700", color: "#EA580C" }}>कारण</Text>
+            </View>
+            <Text style={{ fontSize: 14, color: "#7C2D12", lineHeight: 20 }}>{ban.blockReason}</Text>
+          </View>
+        )}
+
+        {/* Our message */}
+        <View style={{ backgroundColor: colors.card, borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: colors.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <Feather name="info" size={16} color="#7C3AED" />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#7C3AED" }}>सहारा की तरफ से</Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 20 }}>
+            नमस्ते{ban.userName ? ` ${ban.userName.split(" ")[0]}` : ""} जी,{"\n\n"}
+            आपके account पर हमारी Community Guidelines का उल्लंघन पाया गया, जिसके कारण यह action लेना ज़रूरी हो गया। यह निर्णय सभी users की सुरक्षा और app की quality बनाए रखने के लिए लिया गया है।{"\n\n"}
+            अगर आपको लगता है कि यह गलती से हुआ है या आप अपना पक्ष रखना चाहते हैं, तो नीचे दिए email पर हमसे बात करें। हम हर appeal को ध्यान से सुनते हैं।
+          </Text>
+        </View>
+
+        {/* Contact */}
+        <View style={{ backgroundColor: "#F0FDF4", borderRadius: 16, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: "#BBF7D0" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <Feather name="mail" size={16} color="#166534" />
+            <Text style={{ fontSize: 14, fontWeight: "700", color: "#166534" }}>सहायता के लिए Contact करें</Text>
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: "700", color: "#15803D" }}>saharaapphelp@gmail.com</Text>
+          <Text style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>
+            Subject में अपनी Sahara ID ज़रूर लिखें
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          style={{ backgroundColor: "#7C3AED", borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
+          onPress={onTryAgain}
+        >
+          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>दोबारा Check करें</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   food: "🍲",
@@ -122,7 +230,7 @@ const API_BASE =
   (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
 
 function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
-  const { setAuthedProfile } = useApp();
+  const { setAuthedProfile, setBanInfo, banInfo } = useApp();
   const colors = useColors();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
@@ -164,6 +272,11 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
       const { user } = await authApi.login({ email: loginEmail.trim(), password: loginPassword });
       setAuthedProfile(user);
     } catch (err: any) {
+      // Handle account blocked separately
+      if (err.banInfo) {
+        setBanInfo({ ...err.banInfo, userEmail: loginEmail.trim() });
+        return;
+      }
       Alert.alert("Login Failed", err.message ?? "Login nahi ho paya.");
     } finally {
       setLoading(false);
@@ -419,18 +532,38 @@ function EditModal({
 
 // ─── Main Profile Screen ─────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const { profile, requests, updateProfile, updateRequestStatus, deleteRequest, logout } = useApp();
+  const { profile, requests, updateProfile, updateRequestStatus, deleteRequest, logout, banInfo, setBanInfo } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top;
 
   const isLoggedIn = !!profile.id;
+
   const [editModal, setEditModal] = useState(false);
   const [editName, setEditName] = useState(profile.name);
   const [editPhone, setEditPhone] = useState(profile.phone);
   const [editLocation, setEditLocation] = useState(profile.location);
   const [photoUri, setPhotoUri] = useState(profile.photoUri ?? profile.photoUrl ?? "");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Show ban screen if user is banned (either auto-logout or login attempt)
+  if (banInfo) {
+    return (
+      <BanScreen
+        ban={banInfo}
+        onTryAgain={() => {
+          if (!banInfo.isPermanent && banInfo.blockedUntil) {
+            const expiry = new Date(banInfo.blockedUntil);
+            if (expiry <= new Date()) {
+              setBanInfo(null);
+              return;
+            }
+          }
+          Alert.alert("अभी भी Ban है", "आपका ban अभी समाप्त नहीं हुआ है। बाद में try करें या email करें।");
+        }}
+      />
+    );
+  }
 
   const myRequests = requests.filter((r) => r.userId === profile.id);
   const activeCount = myRequests.filter((r) => r.status === "active").length;
