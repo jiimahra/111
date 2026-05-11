@@ -64,9 +64,9 @@ function openDirections(lat: number, lng: number, name: string) {
 function HospitalCard({ item }: { item: Hospital }) {
   const colors = useColors();
   const isVet = item.type === "vet";
-  const openColor = item.open === true ? "#166534" : item.open === false ? "#DC2626" : "#92400E";
-  const openBg = item.open === true ? "#DCFCE7" : item.open === false ? "#FEE2E2" : "#FEF3C7";
-  const openLabel = item.open === true ? "● खुला" : item.open === false ? "● बंद" : "● अज्ञात";
+  const openColor = item.open === true ? "#166534" : "#DC2626";
+  const openBg = item.open === true ? "#DCFCE7" : "#FEE2E2";
+  const openLabel = item.open === true ? "● खुला" : "● बंद";
 
   return (
     <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -89,9 +89,11 @@ function HospitalCard({ item }: { item: Hospital }) {
                 <Text style={[styles.badgeText, { color: "#DC2626" }]}>🚨 Emergency</Text>
               </View>
             )}
-            <View style={[styles.badge, { backgroundColor: openBg }]}>
-              <Text style={[styles.badgeText, { color: openColor }]}>{openLabel}</Text>
-            </View>
+            {item.open !== null && (
+              <View style={[styles.badge, { backgroundColor: openBg }]}>
+                <Text style={[styles.badgeText, { color: openColor }]}>{openLabel}</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
