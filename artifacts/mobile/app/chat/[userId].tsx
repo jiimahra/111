@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -22,10 +24,107 @@ import { socialApi, type ChatMessage } from "@/lib/social";
 const GREEN = "#7C3AED";
 const NAVY = "#EC4899";
 
+// ─── Call Unavailable Sheet ───────────────────────────────────────────────────
+function CallUnavailableModal({
+  visible,
+  isVideo,
+  friendName,
+  onClose,
+}: {
+  visible: boolean;
+  isVideo: boolean;
+  friendName: string;
+  onClose: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity activeOpacity={1}>
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingHorizontal: 24,
+              paddingTop: 16,
+              paddingBottom: insets.bottom + 32,
+            }}
+          >
+            {/* Handle */}
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: "#E5E7EB", alignSelf: "center", marginBottom: 20 }} />
+
+            {/* Icon */}
+            <View style={{ alignItems: "center", marginBottom: 20 }}>
+              <LinearGradient
+                colors={["#7C3AED", "#EC4899"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 }}
+              >
+                <Feather name={isVideo ? "video-off" : "phone-off"} size={30} color="#fff" />
+              </LinearGradient>
+              <Text style={{ fontSize: 20, fontWeight: "800", color: "#111827", textAlign: "center" }}>
+                {isVideo ? "Video Call" : "Voice Call"} उपलब्ध नहीं
+              </Text>
+              <Text style={{ fontSize: 13, color: "#6B7280", marginTop: 4 }}>
+                {friendName} के साथ {isVideo ? "video" : "voice"} call
+              </Text>
+            </View>
+
+            {/* Explanation */}
+            <View style={{ backgroundColor: "#FFF7ED", borderRadius: 16, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: "#FED7AA" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Feather name="info" size={16} color="#EA580C" />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#EA580C" }}>यह क्यों नहीं चल रहा?</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: "#7C2D12", lineHeight: 20 }}>
+                Voice और Video calling के लिए एक special technology (WebRTC) की ज़रूरत होती है जो{" "}
+                <Text style={{ fontWeight: "700" }}>Expo Go app में available नहीं है।</Text>
+                {"\n\n"}
+                यह feature Sahara के published/production version में पूरी तरह काम करता है।
+              </Text>
+            </View>
+
+            {/* What works */}
+            <View style={{ backgroundColor: "#F0FDF4", borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: "#BBF7D0" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Feather name="check-circle" size={16} color="#16A34A" />
+                <Text style={{ fontSize: 14, fontWeight: "700", color: "#166534" }}>अभी क्या काम करता है?</Text>
+              </View>
+              {[
+                { icon: "message-circle" as const, text: "Text messaging — पूरी तरह काम करता है ✓" },
+                { icon: "image" as const, text: "Media sharing — जल्द आ रहा है" },
+              ].map((item) => (
+                <View key={item.text} style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+                  <Feather name={item.icon} size={14} color="#16A34A" />
+                  <Text style={{ fontSize: 13, color: "#166534" }}>{item.text}</Text>
+                </View>
+              ))}
+            </View>
+
+            <TouchableOpacity
+              onPress={onClose}
+              style={{ backgroundColor: "#7C3AED", borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>समझ गया, वापस जाएं</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ChatScreen() {
   const { userId: friendId, name: friendName } = useLocalSearchParams<{ userId: string; name: string }>();
   const { profile } = useApp();
-  const { startCall } = useCall();
+  const { startCall, isCallAvailable } = useCall();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
@@ -40,6 +139,7 @@ export default function ChatScreen() {
   const [isOnline, setIsOnline] = useState(false);
   const [lastSeen, setLastSeen] = useState<string | null>(null);
   const [calling, setCalling] = useState(false);
+  const [unavailableModal, setUnavailableModal] = useState<{ visible: boolean; isVideo: boolean }>({ visible: false, isVideo: false });
 
   const myId = profile.id ?? "";
 
@@ -54,6 +154,12 @@ export default function ChatScreen() {
 
   const handleCall = useCallback(async (isVideo: boolean) => {
     if (!friendId || !friendName || calling) return;
+
+    if (!isCallAvailable) {
+      setUnavailableModal({ visible: true, isVideo });
+      return;
+    }
+
     setCalling(true);
     try {
       await startCall(friendId, friendName, isVideo);
@@ -62,7 +168,7 @@ export default function ChatScreen() {
     } finally {
       setCalling(false);
     }
-  }, [friendId, friendName, calling, startCall]);
+  }, [friendId, friendName, calling, startCall, isCallAvailable]);
 
   useEffect(() => {
     if (friendName) {
@@ -72,26 +178,52 @@ export default function ChatScreen() {
           <ChatHeader name={friendName} isOnline={isOnline} lastSeen={lastSeen} />
         ),
         headerRight: () => (
-          <View style={{ flexDirection: "row", gap: 6, marginRight: 4 }}>
+          <View style={{ flexDirection: "row", gap: 8, marginRight: 4 }}>
             <TouchableOpacity
-              style={headerStyles.callBtn}
+              style={[
+                headerStyles.callBtn,
+                !isCallAvailable && headerStyles.callBtnUnavailable,
+                calling && { opacity: 0.5 },
+              ]}
               onPress={() => handleCall(false)}
               disabled={calling}
             >
-              <Feather name="phone" size={19} color={GREEN} />
+              <Feather
+                name="phone"
+                size={18}
+                color={isCallAvailable ? GREEN : "#9CA3AF"}
+              />
+              {!isCallAvailable && (
+                <View style={headerStyles.unavailableDot}>
+                  <Text style={{ fontSize: 7, color: "#fff", fontWeight: "800" }}>!</Text>
+                </View>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={headerStyles.callBtn}
+              style={[
+                headerStyles.callBtn,
+                !isCallAvailable && headerStyles.callBtnUnavailable,
+                calling && { opacity: 0.5 },
+              ]}
               onPress={() => handleCall(true)}
               disabled={calling}
             >
-              <Feather name="video" size={19} color={GREEN} />
+              <Feather
+                name="video"
+                size={18}
+                color={isCallAvailable ? GREEN : "#9CA3AF"}
+              />
+              {!isCallAvailable && (
+                <View style={headerStyles.unavailableDot}>
+                  <Text style={{ fontSize: 7, color: "#fff", fontWeight: "800" }}>!</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         ),
       });
     }
-  }, [friendName, navigation, isOnline, lastSeen, handleCall, calling]);
+  }, [friendName, navigation, isOnline, lastSeen, handleCall, calling, isCallAvailable]);
 
   const fetchMessages = useCallback(async (silent = false) => {
     if (!myId || !friendId) return;
@@ -192,54 +324,63 @@ export default function ChatScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
-    >
-      {messages.length === 0 ? (
-        <View style={styles.center}>
-          <View style={styles.emptyIcon}>
-            <Feather name="message-circle" size={32} color="#D1D5DB" />
-          </View>
-          <Text style={styles.emptyText}>No messages yet</Text>
-          <Text style={styles.emptyHint}>Say hello to {friendName}! 👋</Text>
-        </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={(m) => m.id}
-          contentContainerStyle={[styles.messageList, { paddingBottom: 16 }]}
-          renderItem={renderItem}
-          onLayout={() => listRef.current?.scrollToEnd({ animated: false })}
-        />
-      )}
+    <>
+      <CallUnavailableModal
+        visible={unavailableModal.visible}
+        isVideo={unavailableModal.isVideo}
+        friendName={friendName ?? ""}
+        onClose={() => setUnavailableModal({ visible: false, isVideo: false })}
+      />
 
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <TextInput
-          style={styles.textInput}
-          placeholder={`Message ${friendName ?? ""}…`}
-          placeholderTextColor="#9CA3AF"
-          value={text}
-          onChangeText={setText}
-          multiline
-          maxLength={1000}
-          autoCorrect={false}
-        />
-        <TouchableOpacity
-          style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
-          onPress={sendMessage}
-          disabled={!text.trim() || sending}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Feather name="send" size={18} color="#fff" />
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
+        {messages.length === 0 ? (
+          <View style={styles.center}>
+            <View style={styles.emptyIcon}>
+              <Feather name="message-circle" size={32} color="#D1D5DB" />
+            </View>
+            <Text style={styles.emptyText}>No messages yet</Text>
+            <Text style={styles.emptyHint}>Say hello to {friendName}! 👋</Text>
+          </View>
+        ) : (
+          <FlatList
+            ref={listRef}
+            data={messages}
+            keyExtractor={(m) => m.id}
+            contentContainerStyle={[styles.messageList, { paddingBottom: 16 }]}
+            renderItem={renderItem}
+            onLayout={() => listRef.current?.scrollToEnd({ animated: false })}
+          />
+        )}
+
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <TextInput
+            style={styles.textInput}
+            placeholder={`Message ${friendName ?? ""}…`}
+            placeholderTextColor="#9CA3AF"
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={1000}
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
+            onPress={sendMessage}
+            disabled={!text.trim() || sending}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Feather name="send" size={18} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 
@@ -292,6 +433,23 @@ const headerStyles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#D1FAE5",
+  },
+  callBtnUnavailable: {
+    backgroundColor: "#F9FAFB",
+    borderColor: "#E5E7EB",
+  },
+  unavailableDot: {
+    position: "absolute",
+    top: 1,
+    right: 1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#F59E0B",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
 });
 

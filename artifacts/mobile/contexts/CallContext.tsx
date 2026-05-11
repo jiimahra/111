@@ -136,12 +136,18 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   const startCall = useCallback(async (calleeId: string, calleeName: string, isVideo: boolean) => {
     if (!isCallAvailable) {
       Alert.alert(
-        "Feature Not Available",
-        "Voice/Video calling works in the published app. Please install the Sahara app from the store.",
+        `${isVideo ? "Video" : "Voice"} Call उपलब्ध नहीं`,
+        "यह feature Expo Go में support नहीं करता। Published Sahara app में पूरी तरह काम करेगा।",
       );
       return;
     }
-    if (!socketRef.current) return;
+    if (!socketRef.current) {
+      Alert.alert(
+        "Connection नहीं है",
+        "Server से connect नहीं हो पाया। Internet check करें और dobara try करें।",
+      );
+      return;
+    }
 
     try {
       const stream = await getMedia(isVideo);
