@@ -230,10 +230,13 @@ const API_BASE =
   (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
 
 function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
-  const { setAuthedProfile, setBanInfo, banInfo } = useApp();
+  const { setAuthedProfile, setBanInfo } = useApp();
   const colors = useColors();
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
+
+  // Local ban state — shown immediately on login attempt, no AppContext delay
+  const [loginBan, setLoginBan] = useState<BanInfo | null>(null);
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -251,6 +254,26 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const [resetCode, setResetCode] = useState("");
   const [resetNewPw, setResetNewPw] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
+
+  // Show BanScreen directly inside AuthScreen — most reliable approach
+  if (loginBan) {
+    return (
+      <BanScreen
+        ban={loginBan}
+        onTryAgain={() => {
+          if (!loginBan.isPermanent && loginBan.blockedUntil) {
+            const expiry = new Date(loginBan.blockedUntil);
+            if (expiry <= new Date()) {
+              setLoginBan(null);
+              setBanInfo(null);
+              return;
+            }
+          }
+          Alert.alert("अभी भी Ban है", "आपका ban अभी समाप्त नहीं हुआ है। बाद में try करें या email करें।");
+        }}
+      />
+    );
+  }
 
   function handleGooglePress() {
     const url = `${API_BASE}/api/auth/google/start?mode=${tab}`;
@@ -272,9 +295,12 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
       const { user } = await authApi.login({ email: loginEmail.trim(), password: loginPassword });
       setAuthedProfile(user);
     } catch (err: any) {
-      // Handle account blocked separately
       if (err.banInfo) {
-        setBanInfo({ ...err.banInfo, userEmail: loginEmail.trim() });
+        // Show ban screen immediately via local state (guaranteed instant render)
+        const ban: BanInfo = { ...err.banInfo, userEmail: loginEmail.trim() };
+        setLoginBan(ban);
+        setBanInfo(ban); // also persist in AppContext
+        setLoading(false);
         return;
       }
       Alert.alert("Login Failed", err.message ?? "Login nahi ho paya.");
