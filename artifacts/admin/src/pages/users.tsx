@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useUsers, useDeleteUser, useBlockUser, useUnblockUser } from "@/hooks/use-admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, ShieldOff, ShieldCheck } from "lucide-react";
+import { Trash2, ShieldOff, ShieldCheck, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -50,11 +50,24 @@ export default function Users() {
   const unblockUser = useUnblockUser();
   const { toast } = useToast();
 
+  const [searchQuery, setSearchQuery] = useState("");
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [blockTarget, setBlockTarget] = useState<{ id: string; name: string } | null>(null);
   const [selectedDuration, setSelectedDuration] = useState("3m");
   const [blockReason, setBlockReason] = useState("");
   const [unblockTarget, setUnblockTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const filteredUsers = useMemo(() => {
+    if (!data?.users) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return data.users;
+    return data.users.filter((u) =>
+      (u.saharaId ?? "").toLowerCase().includes(q) ||
+      (u.name ?? "").toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q) ||
+      (u.phone ?? "").toLowerCase().includes(q)
+    );
+  }, [data?.users, searchQuery]);
 
   const handleDelete = () => {
     if (!userToDelete) return;
@@ -108,9 +121,35 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-        <p className="text-muted-foreground mt-1">Manage platform members — block, unblock, or delete accounts.</p>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold tracking-tight">Users</h1>
+          <p className="text-muted-foreground mt-1">Manage platform members — block, unblock, or delete accounts.</p>
+        </div>
+        {data && (
+          <p className="text-sm text-muted-foreground shrink-0">
+            {searchQuery ? `${filteredUsers.length} / ${data.users.length} users` : `${data.users.length} users`}
+          </p>
+        )}
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Sahara ID, naam, email ya phone..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9 pr-9"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <Card className="border-none shadow-sm">
@@ -138,14 +177,14 @@ export default function Users() {
                     <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : data?.users.length === 0 ? (
+              ) : filteredUsers.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No users found
+                    {searchQuery ? `"${searchQuery}" se koi user nahi mila` : "No users found"}
                   </TableCell>
                 </TableRow>
               ) : (
-                data?.users.map((user) => {
+                filteredUsers.map((user) => {
                   const isBlocked = !!user.blockedUntil;
                   const isPermanent = isBlocked && new Date(user.blockedUntil!).getFullYear() >= 9999;
                   return (
