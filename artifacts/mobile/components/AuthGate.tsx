@@ -1,6 +1,8 @@
 import { Feather } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
+import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -139,6 +141,26 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   const showError = (msg: string) => Alert.alert("Error", msg);
 
+  const navigateToBan = async (data: any, userEmail: string) => {
+    const ban = {
+      blockedUntil: data.blockedUntil ?? "",
+      isPermanent:  data.isPermanent ? "1" : "0",
+      blockReason:  data.blockReason ?? "",
+      userEmail,
+      userName:     data.userName ?? "",
+    };
+    try {
+      await AsyncStorage.setItem("@sahara/ban_info_v1", JSON.stringify({
+        blockedUntil: data.blockedUntil ?? null,
+        isPermanent:  !!data.isPermanent,
+        blockReason:  data.blockReason ?? null,
+        userEmail,
+        userName:     data.userName ?? "",
+      }));
+    } catch { /**/ }
+    router.push({ pathname: "/ban", params: ban });
+  };
+
   const handleLogin = async () => {
     if (!email.trim() || !password) return showError("Please enter email and password.");
     setBusy(true);
@@ -151,21 +173,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       const data = await res.json() as any;
       if (!res.ok) {
         if (data.error === "account_blocked") {
-          const isPermanent = data.isPermanent as boolean;
-          let untilText = "";
-          if (!isPermanent && data.blockedUntil) {
-            const d = new Date(data.blockedUntil as string);
-            untilText = `${d.getDate().toString().padStart(2,"0")}/${(d.getMonth()+1).toString().padStart(2,"0")}/${d.getFullYear()}`;
-          }
-          const durationMsg = isPermanent
-            ? "permanently"
-            : `${untilText} tak ke liye`;
-          const reasonPart = data.blockReason ? `\n\nKaran: ${data.blockReason}` : "";
-          Alert.alert(
-            "Account Block Ho Gaya",
-            `Aapki ID ${durationMsg} block kar di gayi hai.${reasonPart}\n\nUnblock karane ke liye hamari team se sampark karein:\nsaharaapphelp@gmail.com`,
-            [{ text: "Samajh Gaya", style: "default" }]
-          );
+          await navigateToBan(data, email.trim());
           return;
         }
         throw new Error(data.error ?? "Login failed");
@@ -231,7 +239,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ email: g.email, password: g.password }),
       });
       const data = await res.json() as any;
-      if (!res.ok) throw new Error(data.error ?? "Login failed");
+      if (!res.ok) {
+        if (data.error === "account_blocked") {
+          await navigateToBan({ ...data, userName: g.name }, g.email);
+          return;
+        }
+        throw new Error(data.error ?? "Login failed");
+      }
       setAuthedProfile(data.user);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Guest login failed");
