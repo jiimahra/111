@@ -290,7 +290,7 @@ function MenuDrawer({
 
                 <TouchableOpacity
                   style={[styles.drawerItem, { borderBottomColor: colors.border }]}
-                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                  onPress={() => { onClose(); router.push("/notifications-settings"); }}
                 >
                   <View style={styles.drawerItemIcon}>
                     <Feather name="bell" size={18} color="#7C3AED" />
@@ -304,21 +304,21 @@ function MenuDrawer({
 
                 <TouchableOpacity
                   style={[styles.drawerItem, { borderBottomColor: colors.border }]}
-                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                  onPress={() => { onClose(); router.push("/privacy"); }}
                 >
                   <View style={styles.drawerItemIcon}>
                     <Feather name="shield" size={18} color="#7C3AED" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.drawerItemLabel, { color: colors.foreground }]}>Privacy & Security</Text>
-                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>गोपनीयता और सुरक्षा</Text>
+                    <Text style={[styles.drawerItemHi, { color: colors.mutedForeground }]}>निजता एवं सुरक्षा</Text>
                   </View>
                   <Feather name="chevron-right" size={16} color={colors.mutedForeground} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.drawerItem, { borderBottomColor: colors.border }]}
-                  onPress={() => { onClose(); router.push("/(tabs)/profile"); }}
+                  onPress={() => { onClose(); router.push("/about"); }}
                 >
                   <View style={styles.drawerItemIcon}>
                     <Feather name="info" size={18} color="#7C3AED" />
