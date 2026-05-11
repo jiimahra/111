@@ -229,13 +229,28 @@ const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
   (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
 
+const GUESTS = [
+  { label: "Guest 1 – Rahul", email: "guest1@saharatest.in", pw: "sahara123" },
+  { label: "Guest 2 – Priya", email: "guest2@saharatest.in", pw: "sahara123" },
+  { label: "Guest 3 – Amit",  email: "guest3@saharatest.in", pw: "sahara123" },
+  { label: "Guest 4 – Sunita",email: "guest4@saharatest.in", pw: "sahara123" },
+];
+
+function buildBanDurText(ban: BanInfo): string {
+  if (ban.isPermanent || !ban.blockedUntil) return "Permanent Ban";
+  const days = Math.ceil((new Date(ban.blockedUntil).getTime() - Date.now()) / 86400000);
+  if (days >= 365) return `${Math.floor(days / 365)} saal ke liye Ban`;
+  if (days >= 30)  return `${Math.floor(days / 30)} mahine ke liye Ban`;
+  return `${days} din ke liye Ban`;
+}
+
 function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
   const { setAuthedProfile, setBanInfo } = useApp();
   const colors = useColors();
+
+  // ── ALL state hooks at top ────────────────────────────────────────────────
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [loading, setLoading] = useState(false);
-
-  // Local ban state — shown immediately on login attempt, no AppContext delay
   const [loginBan, setLoginBan] = useState<BanInfo | null>(null);
 
   const [loginEmail, setLoginEmail] = useState("");
@@ -255,24 +270,62 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const [resetNewPw, setResetNewPw] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code">("email");
 
-  // Show BanScreen directly inside AuthScreen — most reliable approach
-  if (loginBan) {
-    return (
-      <BanScreen
-        ban={loginBan}
-        onTryAgain={() => {
-          if (!loginBan.isPermanent && loginBan.blockedUntil) {
-            const expiry = new Date(loginBan.blockedUntil);
-            if (expiry <= new Date()) {
-              setLoginBan(null);
-              setBanInfo(null);
-              return;
-            }
-          }
-          Alert.alert("अभी भी Ban है", "आपका ban अभी समाप्त नहीं हुआ है। बाद में try करें या email करें।");
-        }}
-      />
+  // ── Core ban handler — called after every login attempt ───────────────────
+  function showBan(ban: BanInfo) {
+    setBanInfo(ban);
+    setLoginBan(ban);
+    setLoading(false);
+    const dur = buildBanDurText(ban);
+    Alert.alert(
+      "⛔ Account Ban Hai",
+      `${dur}\n\nApeel ke liye email karein:\nsaharaapphelp@gmail.com`,
+      [{ text: "Theek Hai" }]
     );
+  }
+
+  // ── Direct fetch login — bypasses authApi so ban is detected on raw response
+  async function doLogin(email: string, password: string) {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      let data: any = {};
+      try { data = await res.json(); } catch { /**/ }
+
+      if (!res.ok) {
+        if (data?.error === "account_blocked") {
+          showBan({
+            blockedUntil: data.blockedUntil ?? null,
+            isPermanent:  data.isPermanent  ?? false,
+            blockReason:  data.blockReason  ?? null,
+            userEmail:    email.trim(),
+          });
+          return;
+        }
+        Alert.alert("Login Failed", data?.error ?? `Server error (${res.status})`);
+        return;
+      }
+      setAuthedProfile(data.user);
+    } catch (e: any) {
+      Alert.alert("Network Error", e?.message ?? "Internet connection check karein.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleLogin() {
+    if (!loginEmail.trim() || !loginPassword) {
+      Alert.alert("Required", "Email aur password dono bharo.");
+      return;
+    }
+    void doLogin(loginEmail, loginPassword);
+  }
+
+  function handleGuestLogin(email: string, pw: string) {
+    void doLogin(email, pw);
   }
 
   function handleGooglePress() {
@@ -282,46 +335,6 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
     } else {
       const { Linking } = require("react-native");
       void Linking.openURL(url);
-    }
-  }
-
-  async function handleLogin() {
-    if (!loginEmail.trim() || !loginPassword) {
-      Alert.alert("Required", "Email aur password dono bharo.");
-      return;
-    }
-    setLoading(true);
-    try {
-      const { user } = await authApi.login({ email: loginEmail.trim(), password: loginPassword });
-      setAuthedProfile(user);
-    } catch (err: any) {
-      if (err.banInfo) {
-        const ban: BanInfo = { ...err.banInfo, userEmail: loginEmail.trim() };
-        // 1) Set state so BanScreen renders
-        setLoginBan(ban);
-        setBanInfo(ban);
-        setLoading(false);
-        // 2) Also show Alert as guaranteed fallback (works even before re-render)
-        const durText = ban.isPermanent
-          ? "Permanent Ban"
-          : ban.blockedUntil
-          ? (() => {
-              const days = Math.ceil((new Date(ban.blockedUntil).getTime() - Date.now()) / 86400000);
-              if (days >= 365) return `${Math.floor(days / 365)} saal ke liye Ban`;
-              if (days >= 30) return `${Math.floor(days / 30)} mahine ke liye Ban`;
-              return `${days} din ke liye Ban`;
-            })()
-          : "Ban hai";
-        Alert.alert(
-          "⛔ Account Ban Hai",
-          `${durText}\n\nApeel ya sahayta ke liye email karein:\nsaharaapphelp@gmail.com`,
-          [{ text: "Samajh Gaya", style: "default" }]
-        );
-        return;
-      }
-      Alert.alert("Login Failed", err.message ?? "Login nahi ho paya.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -379,6 +392,23 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   const fg = colors.foreground;
   const muted = colors.mutedForeground;
   const border = colors.border;
+
+  // ── Ban screen — shown BEFORE everything else ─────────────────────────────
+  if (loginBan) {
+    return (
+      <BanScreen
+        ban={loginBan}
+        onTryAgain={() => {
+          if (!loginBan.isPermanent && loginBan.blockedUntil && new Date(loginBan.blockedUntil) <= new Date()) {
+            setLoginBan(null);
+            setBanInfo(null);
+          } else {
+            Alert.alert("अभी भी Ban है", "Ban abhi khatam nahi hua. Baad mein try karein ya email karein.");
+          }
+        }}
+      />
+    );
+  }
 
   if (forgotMode) {
     return (
@@ -465,6 +495,33 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
               <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Login करें →</Text>}
               </TouchableOpacity>
+
+              {/* 4 Guest Quick-Login Buttons */}
+              <View style={{ marginTop: 16 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                  <View style={{ flex: 1, height: 1, backgroundColor: border }} />
+                  <Text style={{ fontSize: 12, color: muted, fontWeight: "600" }}>GUEST TEST ACCOUNTS</Text>
+                  <View style={{ flex: 1, height: 1, backgroundColor: border }} />
+                </View>
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {GUESTS.map((g) => (
+                    <TouchableOpacity
+                      key={g.email}
+                      onPress={() => handleGuestLogin(g.email, g.pw)}
+                      disabled={loading}
+                      style={{
+                        flex: 1, minWidth: "45%",
+                        backgroundColor: "#EDE9FE",
+                        borderRadius: 10, paddingVertical: 10, paddingHorizontal: 8,
+                        alignItems: "center", borderWidth: 1, borderColor: "#7C3AED33",
+                        opacity: loading ? 0.5 : 1,
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: "#7C3AED" }}>{g.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
             </>
           ) : (
             <>
