@@ -70,72 +70,120 @@ async function overpassGET(query: string): Promise<any> {
   throw new Error("All Overpass endpoints failed");
 }
 
-// Google Places Nearby Search (New) — returns open_now for nearby hospitals
-async function googleNearbyOpenStatus(
-  lat: number,
-  lng: number
-): Promise<Map<string, boolean | null>> {
-  const statusMap = new Map<string, boolean | null>();
-  if (!GOOGLE_KEY) return statusMap;
+function extractOpenStatus(place: any): boolean | null {
+  if (
+    place.businessStatus === "CLOSED_PERMANENTLY" ||
+    place.businessStatus === "CLOSED_TEMPORARILY"
+  ) return false;
+  if (place.currentOpeningHours?.openNow !== undefined)
+    return place.currentOpeningHours.openNow;
+  if (place.regularOpeningHours?.openNow !== undefined)
+    return place.regularOpeningHours.openNow;
+  return null;
+}
 
-  try {
-    // Use Places API (New) — Nearby Search
-    const url = `https://places.googleapis.com/v1/places:searchNearby`;
-    const body = {
+async function googleNearbySearch(
+  lat: number,
+  lng: number,
+  radius: number
+): Promise<any[]> {
+  const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": GOOGLE_KEY,
+      "X-Goog-FieldMask":
+        "places.displayName,places.location,places.currentOpeningHours,places.regularOpeningHours,places.businessStatus",
+    },
+    body: JSON.stringify({
       includedTypes: ["hospital", "veterinary_care", "medical_clinic", "doctor"],
       maxResultCount: 20,
       locationRestriction: {
-        circle: {
-          center: { latitude: lat, longitude: lng },
-          radius: 15000, // 15km for open status (closer ones more relevant)
-        },
+        circle: { center: { latitude: lat, longitude: lng }, radius },
       },
-    };
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) {
+    console.warn(`Google Places (${lat.toFixed(2)},${lng.toFixed(2)}) → ${res.status}`);
+    return [];
+  }
+  const data = await res.json() as { places?: any[] };
+  return data.places ?? [];
+}
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_KEY,
-        "X-Goog-FieldMask":
-          "places.displayName,places.location,places.currentOpeningHours,places.regularOpeningHours,places.businessStatus",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
-    });
+interface GooglePlaceEntry {
+  lat: number;
+  lng: number;
+  open: boolean | null;
+  name: string;
+}
 
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn(`Google Places error ${res.status}: ${errText.slice(0, 200)}`);
-      return statusMap;
-    }
+function normalizeName(n: string): string {
+  return n
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0900-\u097f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-    const data = await res.json() as { places?: any[] };
-    for (const place of data.places ?? []) {
-      const pLat = place.location?.latitude;
-      const pLng = place.location?.longitude;
-      if (!pLat || !pLng) continue;
+// Google Places — Grid of 9 points covering the full 100km area
+async function googleNearbyOpenStatus(
+  lat: number,
+  lng: number
+): Promise<{ byCoord: Map<string, boolean | null>; byName: Map<string, boolean | null>; entries: GooglePlaceEntry[] }> {
+  const byCoord = new Map<string, boolean | null>();
+  const byName = new Map<string, boolean | null>();
+  const entries: GooglePlaceEntry[] = [];
 
-      // open_now from currentOpeningHours or regularOpeningHours
-      let openNow: boolean | null = null;
-      if (place.currentOpeningHours?.openNow !== undefined) {
-        openNow = place.currentOpeningHours.openNow;
-      } else if (place.regularOpeningHours?.openNow !== undefined) {
-        openNow = place.regularOpeningHours.openNow;
+  if (!GOOGLE_KEY) return { byCoord, byName, entries };
+
+  try {
+    const offset = 0.4; // ~44km
+    const gridPoints = [
+      [lat, lng],
+      [lat + offset, lng],
+      [lat - offset, lng],
+      [lat, lng + offset],
+      [lat, lng - offset],
+      [lat + offset, lng + offset],
+      [lat + offset, lng - offset],
+      [lat - offset, lng + offset],
+      [lat - offset, lng - offset],
+    ];
+
+    const allResults = await Promise.all(
+      gridPoints.map(([gLat, gLng]) =>
+        googleNearbySearch(gLat, gLng, 50000).catch(() => [] as any[])
+      )
+    );
+
+    for (const places of allResults) {
+      for (const place of places) {
+        const pLat = place.location?.latitude;
+        const pLng = place.location?.longitude;
+        if (!pLat || !pLng) continue;
+
+        const coordKey = `${pLat.toFixed(3)},${pLng.toFixed(3)}`;
+        if (byCoord.has(coordKey)) continue; // already seen
+
+        const openStatus = extractOpenStatus(place);
+        byCoord.set(coordKey, openStatus);
+
+        const placeName = place.displayName?.text ?? place.displayName ?? "";
+        if (placeName) {
+          const nk = normalizeName(placeName);
+          if (nk && !byName.has(nk)) byName.set(nk, openStatus);
+        }
+
+        entries.push({ lat: pLat, lng: pLng, open: openStatus, name: placeName });
       }
-      if (place.businessStatus === "CLOSED_PERMANENTLY" || place.businessStatus === "CLOSED_TEMPORARILY") {
-        openNow = false;
-      }
-
-      // Key by rounded coordinates for matching with Overpass results
-      const key = `${pLat.toFixed(3)},${pLng.toFixed(3)}`;
-      statusMap.set(key, openNow);
     }
-    console.log(`Google Places returned ${data.places?.length ?? 0} results, ${statusMap.size} with location`);
+    console.log(`Google Places: ${entries.length} unique places, ${byName.size} by name from 9 grid points`);
   } catch (e: any) {
     console.warn(`Google Places failed: ${e.message}`);
   }
-  return statusMap;
+  return { byCoord, byName, entries };
 }
 
 router.get("/hospitals", async (req, res) => {
@@ -156,10 +204,12 @@ router.get("/hospitals", async (req, res) => {
     const query = `[out:json][timeout:20];(node["amenity"="hospital"](${S},${W},${N},${E});way["amenity"="hospital"](${S},${W},${N},${E});node["amenity"="clinic"](${S},${W},${N},${E});way["amenity"="clinic"](${S},${W},${N},${E});node["amenity"="doctors"](${S},${W},${N},${E});node["amenity"="veterinary"](${S},${W},${N},${E});way["amenity"="veterinary"](${S},${W},${N},${E});node["healthcare"="hospital"](${S},${W},${N},${E});way["healthcare"="hospital"](${S},${W},${N},${E});node["healthcare"="veterinary"](${S},${W},${N},${E});node["healthcare"="clinic"](${S},${W},${N},${E}););out center 250;`;
 
     // Fetch Overpass + Google open status in parallel
-    const [overpassData, googleStatus] = await Promise.all([
+    const [overpassData, google] = await Promise.all([
       overpassGET(query),
       googleNearbyOpenStatus(uLat, uLng),
     ]);
+
+    const { byCoord, byName, entries: googleEntries } = google;
 
     const seen = new Set<string>();
     const hospitals = (overpassData.elements as any[])
@@ -184,21 +234,39 @@ router.get("/hospitals", async (req, res) => {
           Math.round(haversineKm(uLat, uLng, elLat, elLng) * 10) / 10;
         if (km > 100) return null;
 
-        // Try to match with Google open status (within ~300m tolerance)
+        // 1) Exact coordinate key match
         let openStatus: boolean | null = null;
         const coordKey = `${elLat.toFixed(3)},${elLng.toFixed(3)}`;
-        if (googleStatus.has(coordKey)) {
-          openStatus = googleStatus.get(coordKey) ?? null;
+        if (byCoord.has(coordKey)) {
+          openStatus = byCoord.get(coordKey) ?? null;
         } else {
-          // Search nearby keys within 0.003 degree (~300m)
-          for (const [key, val] of googleStatus.entries()) {
-            const [gLat, gLng] = key.split(",").map(Number);
+          // 2) Proximity match within ~500m
+          for (const entry of googleEntries) {
             if (
-              Math.abs(gLat - elLat) < 0.003 &&
-              Math.abs(gLng - elLng) < 0.003
+              Math.abs(entry.lat - elLat) < 0.005 &&
+              Math.abs(entry.lng - elLng) < 0.005
             ) {
-              openStatus = val;
+              openStatus = entry.open;
               break;
+            }
+          }
+        }
+
+        // 3) Name-based match as fallback
+        if (openStatus === null) {
+          const nk = normalizeName(name);
+          if (byName.has(nk)) {
+            openStatus = byName.get(nk) ?? null;
+          } else {
+            // Partial name match — check if any Google name contains or is contained
+            for (const [gName, gOpen] of byName.entries()) {
+              if (
+                (nk.length >= 6 && gName.includes(nk)) ||
+                (gName.length >= 6 && nk.includes(gName))
+              ) {
+                openStatus = gOpen;
+                break;
+              }
             }
           }
         }
