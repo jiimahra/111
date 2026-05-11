@@ -33,11 +33,6 @@ interface Hospital {
   beds: string | null;
 }
 
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-];
-
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -58,113 +53,95 @@ function estimateTime(km: number) {
   return m ? `~${h}h ${m}m` : `~${h} घंटा`;
 }
 
-function isOpenNow(openingHours?: string): boolean | null {
-  if (!openingHours) return null;
-  if (openingHours === "24/7" || openingHours === "00:00-24:00") return true;
-  try {
-    const now = new Date();
-    const day = now.getDay();
-    const timeNow = now.getHours() * 60 + now.getMinutes();
-    const dayMap: Record<number, string[]> = {
-      0: ["Su"], 1: ["Mo"], 2: ["Tu"], 3: ["We"],
-      4: ["Th"], 5: ["Fr"], 6: ["Sa"],
-    };
-    for (const part of openingHours.split(";").map((s) => s.trim())) {
-      const m = part.match(/^(.+?)\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/);
-      if (!m) continue;
-      if (!dayMap[day].some((d) => m[1].includes(d))) continue;
-      const [oh, om] = m[2].split(":").map(Number);
-      const [ch, cm] = m[3].split(":").map(Number);
-      return timeNow >= oh * 60 + om && timeNow <= ch * 60 + cm;
-    }
-  } catch {}
-  return null;
+// Nominatim: search hospitals/vets in a bounding box around user
+async function fetchNominatim(lat: number, lng: number, query: string, limit = 50) {
+  const deg = 0.9; // ~100km
+  const viewbox = `${lng - deg},${lat + deg},${lng + deg},${lat - deg}`;
+  const url =
+    `https://nominatim.openstreetmap.org/search` +
+    `?q=${encodeURIComponent(query)}` +
+    `&format=json&bounded=1&viewbox=${viewbox}&limit=${limit}&addressdetails=1&extratags=1`;
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": "SaharaApp/1.0 (community help India; contact@saharaapp.in)",
+      "Accept-Language": "hi,en",
+    },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+  return res.json() as Promise<any[]>;
 }
 
-function buildAddress(tags: Record<string, string>) {
-  return [
-    tags["addr:housenumber"],
-    tags["addr:street"],
-    tags["addr:suburb"],
-    tags["addr:city"],
-    tags["addr:state"],
-  ]
-    .filter(Boolean)
-    .join(", ") || tags["is_in"] || "";
+function parseNominatim(
+  items: any[],
+  lat: number,
+  lng: number,
+  defaultType: "hospital" | "vet"
+): Hospital[] {
+  return items
+    .map((item: any) => {
+      const elLat = parseFloat(item.lat);
+      const elLng = parseFloat(item.lon);
+      if (!elLat || !elLng) return null;
+      const name =
+        item.namedetails?.["name:hi"] ||
+        item.display_name?.split(",")[0] ||
+        "अज्ञात अस्पताल";
+      const extra = item.extratags || {};
+      const cat = item.type || item.class || "";
+      const isVet =
+        defaultType === "vet" ||
+        cat === "veterinary" ||
+        extra["healthcare"] === "veterinary";
+      const km = Math.round(haversineKm(lat, lng, elLat, elLng) * 10) / 10;
+      const addrParts = item.address || {};
+      const address = [
+        addrParts.road,
+        addrParts.suburb,
+        addrParts.city || addrParts.town || addrParts.village,
+        addrParts.state,
+      ]
+        .filter(Boolean)
+        .join(", ");
+      return {
+        id: `nom-${item.place_id}`,
+        name,
+        type: (isVet ? "vet" : "hospital") as "hospital" | "vet",
+        address,
+        distanceKm: km,
+        distanceText: `${km.toFixed(1)} km`,
+        travelTime: estimateTime(km),
+        open: null,
+        phone: extra["phone"] || extra["contact:phone"] || null,
+        lat: elLat,
+        lng: elLng,
+        emergency: extra["emergency"] === "yes",
+        beds: extra["beds"] || null,
+      } satisfies Hospital;
+    })
+    .filter((h): h is Hospital => h !== null);
 }
 
 async function fetchNearbyHospitals(lat: number, lng: number): Promise<Hospital[]> {
-  const query = `
-[out:json][timeout:25];
-(
-  node["amenity"~"hospital|clinic|veterinary|doctors"](around:100000,${lat},${lng});
-  way["amenity"~"hospital|clinic|veterinary"](around:100000,${lat},${lng});
-  node["healthcare"~"hospital|veterinary"](around:100000,${lat},${lng});
-  way["healthcare"~"hospital|veterinary"](around:100000,${lat},${lng});
-);
-out center 120;
-`.trim();
+  // Run hospital + vet queries in parallel via Nominatim
+  const [hospItems, vetItems] = await Promise.all([
+    fetchNominatim(lat, lng, "hospital clinic", 60).catch(() => [] as any[]),
+    fetchNominatim(lat, lng, "veterinary vet clinic", 30).catch(() => [] as any[]),
+  ]);
 
-  const body = `data=${encodeURIComponent(query)}`;
-  let lastError: any;
+  const hospitals = parseNominatim(hospItems, lat, lng, "hospital");
+  const vets = parseNominatim(vetItems, lat, lng, "vet");
 
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "User-Agent": "SaharaApp/1.0 (community help app India)",
-          Accept: "application/json",
-        },
-        body,
-        signal: AbortSignal.timeout(24000),
-      });
-      if (!res.ok) { lastError = new Error(`HTTP ${res.status}`); continue; }
-      const data = await res.json();
-
-      const seen = new Set<string>();
-      return (data.elements as any[])
-        .map((el: any) => {
-          const tags: Record<string, string> = el.tags || {};
-          const elLat: number = el.lat ?? el.center?.lat;
-          const elLng: number = el.lon ?? el.center?.lon;
-          if (!elLat || !elLng) return null;
-
-          const name = tags["name:hi"] || tags["name"] || tags["name:en"] || "अज्ञात अस्पताल";
-          const amenity = tags["amenity"] || tags["healthcare"] || "";
-          const isVet = amenity === "veterinary" || tags["healthcare"] === "veterinary";
-          const km = Math.round(haversineKm(lat, lng, elLat, elLng) * 10) / 10;
-
-          return {
-            id: `${el.type}-${el.id}`,
-            name,
-            type: (isVet ? "vet" : "hospital") as "hospital" | "vet",
-            address: buildAddress(tags),
-            distanceKm: km,
-            distanceText: `${km.toFixed(1)} km`,
-            travelTime: estimateTime(km),
-            open: isOpenNow(tags["opening_hours"]),
-            phone: tags["phone"] || tags["contact:phone"] || null,
-            lat: elLat,
-            lng: elLng,
-            emergency: tags["emergency"] === "yes",
-            beds: tags["beds"] || null,
-          } satisfies Hospital;
-        })
-        .filter((h): h is Hospital => {
-          if (!h) return false;
-          const key = `${h.name.toLowerCase().trim()}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .sort((a, b) => a.distanceKm - b.distanceKm);
-    } catch (e) {
-      lastError = e;
-    }
-  }
-  throw lastError || new Error("Failed");
+  // Merge, deduplicate by name, sort by distance
+  const seen = new Set<string>();
+  return [...hospitals, ...vets]
+    .filter((h) => {
+      const key = h.name.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return h.distanceKm <= 100;
+    })
+    .sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
 function openDirections(lat: number, lng: number, name: string) {
