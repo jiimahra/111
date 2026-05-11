@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -31,29 +32,11 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<
   RequestStatus,
-  { label: string; lightBg: string; darkBg: string; lightText: string; darkText: string }
+  { label: string; bg: string; text: string; dot: string }
 > = {
-  active: {
-    label: "● Active",
-    lightBg: "#DCFCE7",
-    darkBg: "#14532D",
-    lightText: "#166534",
-    darkText: "#86EFAC",
-  },
-  inprogress: {
-    label: "◐ In Progress",
-    lightBg: "#FEF3C7",
-    darkBg: "#064E3B",
-    lightText: "#065F46",
-    darkText: "#FDE68A",
-  },
-  resolved: {
-    label: "✓ Resolved",
-    lightBg: "#F3F4F6",
-    darkBg: "#1F2937",
-    lightText: "#6B7280",
-    darkText: "#9CA3AF",
-  },
+  active: { label: "Active", bg: "#E8FFF3", text: "#166534", dot: "#22C55E" },
+  inprogress: { label: "In Progress", bg: "#FFF8E1", text: "#92400E", dot: "#F59E0B" },
+  resolved: { label: "Resolved", bg: "#F3F4F6", text: "#6B7280", dot: "#9CA3AF" },
 };
 
 function MyRequestCard({
@@ -66,72 +49,66 @@ function MyRequestCard({
   onDelete: (id: string) => void;
 }) {
   const colors = useColors();
-  const isDark = colors.background === "#0F172A";
   const cfg = STATUS_CONFIG[item.status];
   const [expanded, setExpanded] = useState(false);
 
-  const confirmDelete = () => {
-    Alert.alert("Delete Request", "Are you sure you want to delete this request?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => onDelete(item.id) },
-    ]);
-  };
-
   return (
-    <View style={[styles.myReqCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <TouchableOpacity style={styles.myReqCardTop} onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
-        <View style={styles.myReqCardLeft}>
-          <Text style={styles.myReqEmoji}>{CATEGORY_EMOJIS[item.category]}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.myReqTitle, { color: colors.foreground }]} numberOfLines={expanded ? 0 : 1}>
-              {item.title}
-            </Text>
-            <Text style={[styles.myReqMeta, { color: colors.mutedForeground }]}>
-              📍 {item.location}
-            </Text>
-          </View>
+    <View style={[styles.reqCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <TouchableOpacity style={styles.reqCardTop} onPress={() => setExpanded(!expanded)} activeOpacity={0.7}>
+        <View style={[styles.reqIconBox, { backgroundColor: "#F5F3FF" }]}>
+          <Text style={styles.reqEmoji}>{CATEGORY_EMOJIS[item.category] ?? "📋"}</Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <View style={[styles.statusBadge, { backgroundColor: isDark ? cfg.darkBg : cfg.lightBg }]}>
-            <Text style={[styles.statusText, { color: isDark ? cfg.darkText : cfg.lightText }]}>
-              {cfg.label}
-            </Text>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.reqTitle, { color: colors.foreground }]} numberOfLines={expanded ? 0 : 1}>
+            {item.title}
+          </Text>
+          <Text style={[styles.reqLocation, { color: colors.mutedForeground }]}>
+            📍 {item.location}
+          </Text>
+        </View>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <View style={[styles.statusPill, { backgroundColor: cfg.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: cfg.dot }]} />
+            <Text style={[styles.statusPillText, { color: cfg.text }]}>{cfg.label}</Text>
           </View>
-          <Feather name={expanded ? "chevron-up" : "chevron-down"} size={14} color={colors.mutedForeground} />
+          <Feather name={expanded ? "chevron-up" : "chevron-down"} size={13} color={colors.mutedForeground} />
         </View>
       </TouchableOpacity>
 
       {expanded && (
-        <View style={[styles.myReqExpanded, { borderTopColor: colors.border }]}>
-          <Text style={[styles.myReqDesc, { color: colors.mutedForeground }]}>{item.description}</Text>
-          <Text style={[styles.myReqTimestamp, { color: colors.mutedForeground }]}>
-            Posted: {new Date(item.timestamp).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+        <View style={[styles.reqExpanded, { borderTopColor: colors.border }]}>
+          <Text style={[styles.reqDesc, { color: colors.mutedForeground }]}>{item.description}</Text>
+          <Text style={[styles.reqDate, { color: colors.mutedForeground }]}>
+            🗓 {new Date(item.timestamp).toLocaleDateString("hi-IN", { day: "numeric", month: "short", year: "numeric" })}
           </Text>
-
           {item.status !== "resolved" && (
-            <View style={styles.actionRow}>
+            <View style={styles.reqActions}>
               {item.status === "active" && (
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: "#FEF3C7", borderColor: "#F59E0B" }]}
+                  style={[styles.reqActionBtn, { backgroundColor: "#FFF8E1" }]}
                   onPress={() => onStatusChange(item.id, "inprogress")}
                 >
-                  <Feather name="clock" size={13} color="#065F46" />
-                  <Text style={[styles.actionBtnText, { color: "#065F46" }]}>Mark In Progress</Text>
+                  <Feather name="clock" size={12} color="#92400E" />
+                  <Text style={[styles.reqActionText, { color: "#92400E" }]}>In Progress</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: "#F3E8FF", borderColor: "#7C3AED" }]}
+                style={[styles.reqActionBtn, { backgroundColor: "#E8FFF3" }]}
                 onPress={() => onStatusChange(item.id, "resolved")}
               >
-                <Feather name="check-circle" size={13} color="#166534" />
-                <Text style={[styles.actionBtnText, { color: "#166534" }]}>Mark Resolved</Text>
+                <Feather name="check-circle" size={12} color="#166534" />
+                <Text style={[styles.reqActionText, { color: "#166534" }]}>Resolved</Text>
               </TouchableOpacity>
             </View>
           )}
-
-          <TouchableOpacity style={styles.deleteBtn} onPress={confirmDelete}>
-            <Feather name="trash-2" size={13} color="#DC2626" />
-            <Text style={styles.deleteBtnText}>Delete Request</Text>
+          <TouchableOpacity style={styles.deleteBtn} onPress={() =>
+            Alert.alert("हटाएं?", "यह request delete हो जाएगी।", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Delete", style: "destructive", onPress: () => onDelete(item.id) },
+            ])
+          }>
+            <Feather name="trash-2" size={12} color="#DC2626" />
+            <Text style={styles.deleteBtnText}>Delete</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -139,6 +116,7 @@ function MyRequestCard({
   );
 }
 
+// ─── Auth Screen ────────────────────────────────────────────────────────────
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
   (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
@@ -219,10 +197,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   }
 
   async function handleForgotSend() {
-    if (!forgotEmail.trim()) {
-      Alert.alert("Required", "Email address bharo.");
-      return;
-    }
+    if (!forgotEmail.trim()) { Alert.alert("Required", "Email address bharo."); return; }
     setLoading(true);
     try {
       await authApi.forgotPassword(forgotEmail.trim());
@@ -230,25 +205,18 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
       Alert.alert("Code Bheja!", `${forgotEmail} par 6-digit code bheja gaya hai.`);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Email nahi bheja ja saka.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   async function handleForgotReset() {
-    if (!resetCode.trim() || !resetNewPw) {
-      Alert.alert("Required", "Code aur naya password bharo.");
-      return;
-    }
+    if (!resetCode.trim() || !resetNewPw) { Alert.alert("Required", "Code aur naya password bharo."); return; }
     setLoading(true);
     try {
       const { user } = await authApi.resetPassword({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: resetNewPw });
       setAuthedProfile(user);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Password reset nahi hua.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
   const bg = colors.background;
@@ -260,68 +228,41 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   if (forgotMode) {
     return (
       <View style={[styles.container, { backgroundColor: bg }]}>
-        <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
-          <TouchableOpacity onPress={() => { setForgotMode(false); setForgotStep("email"); }}>
-            <Feather name="arrow-left" size={22} color={fg} />
+        <LinearGradient colors={["#2D0A6E", "#7C3AED", "#EC4899"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.authHeader, { paddingTop: topPad + 16 }]}>
+          <TouchableOpacity onPress={() => { setForgotMode(false); setForgotStep("email"); }} style={styles.authBackBtn}>
+            <Feather name="arrow-left" size={20} color="#fff" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: fg }]}>Password Reset</Text>
-          <View style={{ width: 22 }} />
-        </View>
-        <ScrollView contentContainerStyle={[styles.loginScroll, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
-          <View style={[styles.loginCard, { backgroundColor: card }]}>
-            <Text style={[styles.loginTitle, { color: fg }]}>🔒 Forgot Password</Text>
-            <Text style={[styles.loginSub, { color: muted }]}>
+          <Text style={styles.authHeaderTitle}>Password Reset</Text>
+          <View style={{ width: 36 }} />
+        </LinearGradient>
+        <ScrollView contentContainerStyle={[styles.authScroll, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
+          <View style={[styles.authCard, { backgroundColor: card, borderColor: border }]}>
+            <Text style={[styles.authTitle, { color: fg }]}>🔒 Forgot Password</Text>
+            <Text style={[styles.authSub, { color: muted }]}>
               {forgotStep === "email" ? "Apna email bharo, hum reset code bhejenge." : "Email par aaya code aur naya password bharo."}
             </Text>
-
             {forgotStep === "email" ? (
               <>
-                <Text style={[styles.fieldLabel, { color: muted }]}>Email Address</Text>
                 <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                  <Feather name="mail" size={16} color={muted} />
-                  <TextInput
-                    style={[styles.inputInRow, { color: fg }]}
-                    placeholder="name@example.com"
-                    placeholderTextColor={muted}
-                    value={forgotEmail}
-                    onChangeText={setForgotEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
+                  <Feather name="mail" size={16} color="#7C3AED" />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="name@example.com" placeholderTextColor={muted} value={forgotEmail} onChangeText={setForgotEmail} keyboardType="email-address" autoCapitalize="none" />
                 </View>
-                <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleForgotSend} disabled={loading}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Code Bhejo →</Text>}
+                <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleForgotSend} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Code Bhejo</Text>}
                 </TouchableOpacity>
               </>
             ) : (
               <>
-                <Text style={[styles.fieldLabel, { color: muted }]}>6-Digit Code</Text>
                 <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                  <Feather name="key" size={16} color={muted} />
-                  <TextInput
-                    style={[styles.inputInRow, { color: fg }]}
-                    placeholder="123456"
-                    placeholderTextColor={muted}
-                    value={resetCode}
-                    onChangeText={setResetCode}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                  />
+                  <Feather name="key" size={16} color="#7C3AED" />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="6-digit code" placeholderTextColor={muted} value={resetCode} onChangeText={setResetCode} keyboardType="number-pad" maxLength={6} />
                 </View>
-                <Text style={[styles.fieldLabel, { color: muted }]}>Naya Password</Text>
                 <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                  <Feather name="lock" size={16} color={muted} />
-                  <TextInput
-                    style={[styles.inputInRow, { color: fg }]}
-                    placeholder="Min 6 characters"
-                    placeholderTextColor={muted}
-                    value={resetNewPw}
-                    onChangeText={setResetNewPw}
-                    secureTextEntry
-                  />
+                  <Feather name="lock" size={16} color="#7C3AED" />
+                  <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Naya password" placeholderTextColor={muted} value={resetNewPw} onChangeText={setResetNewPw} secureTextEntry />
                 </View>
-                <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleForgotReset} disabled={loading}>
-                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Password Badlo →</Text>}
+                <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleForgotReset} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Password Badlo</Text>}
                 </TouchableOpacity>
               </>
             )}
@@ -333,16 +274,15 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
-        <Text style={[styles.headerTitle, { color: fg }]}>Profile</Text>
-      </View>
+      <LinearGradient colors={["#2D0A6E", "#7C3AED", "#EC4899"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.authHero, { paddingTop: topPad + 20 }]}>
+        <Text style={styles.authHeroEmoji}>🙏</Text>
+        <Text style={styles.authHeroTitle}>सहारा में स्वागत है</Text>
+        <Text style={styles.authHeroSub}>Login करें और community की मदद करें</Text>
+      </LinearGradient>
 
-      <ScrollView contentContainerStyle={[styles.loginScroll, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
-        <View style={[styles.loginCard, { backgroundColor: card }]}>
-          <Text style={[styles.loginTitle, { color: fg }]}>🙏 सहारा में आपका स्वागत है</Text>
-          <Text style={[styles.loginSub, { color: muted }]}>Login karke apni profile dekhen aur help requests manage karen.</Text>
-
-          <View style={styles.tabRow}>
+      <ScrollView contentContainerStyle={[styles.authScroll, { paddingBottom: insets.bottom + 100 }]} keyboardShouldPersistTaps="handled">
+        <View style={[styles.authCard, { backgroundColor: card, borderColor: border }]}>
+          <View style={[styles.tabRow, { backgroundColor: bg }]}>
             <TouchableOpacity style={[styles.tabBtn, tab === "login" && styles.tabBtnActive]} onPress={() => setTab("login")}>
               <Text style={[styles.tabBtnText, { color: tab === "login" ? "#fff" : muted }]}>Login</Text>
             </TouchableOpacity>
@@ -353,93 +293,71 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
 
           {tab === "login" ? (
             <>
-              <Text style={[styles.fieldLabel, { color: muted }]}>Email Address</Text>
               <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="mail" size={16} color={muted} />
-                <TextInput
-                  style={[styles.inputInRow, { color: fg }]}
-                  placeholder="name@example.com"
-                  placeholderTextColor={muted}
-                  value={loginEmail}
-                  onChangeText={setLoginEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
+                <Feather name="mail" size={16} color="#7C3AED" />
+                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Email address" placeholderTextColor={muted} value={loginEmail} onChangeText={setLoginEmail} keyboardType="email-address" autoCapitalize="none" />
               </View>
-
-              <Text style={[styles.fieldLabel, { color: muted }]}>Password</Text>
               <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="lock" size={16} color={muted} />
-                <TextInput
-                  style={[styles.inputInRow, { color: fg }]}
-                  placeholder="Password"
-                  placeholderTextColor={muted}
-                  value={loginPassword}
-                  onChangeText={setLoginPassword}
-                  secureTextEntry={!showLoginPw}
-                />
+                <Feather name="lock" size={16} color="#7C3AED" />
+                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Password" placeholderTextColor={muted} value={loginPassword} onChangeText={setLoginPassword} secureTextEntry={!showLoginPw} />
                 <TouchableOpacity onPress={() => setShowLoginPw(!showLoginPw)}>
                   <Feather name={showLoginPw ? "eye-off" : "eye"} size={16} color={muted} />
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity onPress={() => setForgotMode(true)} style={{ alignSelf: "flex-end", marginBottom: 12 }}>
-                <Text style={{ color: "#7C3AED", fontSize: 13 }}>Forgot Password?</Text>
+              <TouchableOpacity onPress={() => setForgotMode(true)} style={{ alignSelf: "flex-end", marginBottom: 14 }}>
+                <Text style={{ color: "#7C3AED", fontSize: 13, fontWeight: "600" }}>Forgot Password?</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Login →</Text>}
+              <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleLogin} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Login करें →</Text>}
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={[styles.fieldLabel, { color: muted }]}>Poora Naam</Text>
-              <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="user" size={16} color={muted} />
-                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Aapka naam" placeholderTextColor={muted} value={signupName} onChangeText={setSignupName} />
-              </View>
-
-              <Text style={[styles.fieldLabel, { color: muted }]}>Email Address</Text>
-              <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="mail" size={16} color={muted} />
-                <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="name@example.com" placeholderTextColor={muted} value={signupEmail} onChangeText={setSignupEmail} keyboardType="email-address" autoCapitalize="none" />
-              </View>
-
+              {[
+                { label: "Poora Naam", icon: "user", val: signupName, set: setSignupName, placeholder: "Aapka naam" },
+                { label: "Email", icon: "mail", val: signupEmail, set: setSignupEmail, placeholder: "name@example.com", keyboard: "email-address", auto: "none" },
+              ].map(({ label, icon, val, set, placeholder, keyboard, auto }: any) => (
+                <View key={label}>
+                  <Text style={[styles.fieldLabel, { color: muted }]}>{label}</Text>
+                  <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
+                    <Feather name={icon} size={16} color="#7C3AED" />
+                    <TextInput style={[styles.inputInRow, { color: fg }]} placeholder={placeholder} placeholderTextColor={muted} value={val} onChangeText={set} keyboardType={keyboard} autoCapitalize={auto} />
+                  </View>
+                </View>
+              ))}
               <Text style={[styles.fieldLabel, { color: muted }]}>Password</Text>
               <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="lock" size={16} color={muted} />
+                <Feather name="lock" size={16} color="#7C3AED" />
                 <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Min 6 characters" placeholderTextColor={muted} value={signupPassword} onChangeText={setSignupPassword} secureTextEntry={!showSignupPw} />
                 <TouchableOpacity onPress={() => setShowSignupPw(!showSignupPw)}>
                   <Feather name={showSignupPw ? "eye-off" : "eye"} size={16} color={muted} />
                 </TouchableOpacity>
               </View>
-
               <Text style={[styles.fieldLabel, { color: muted }]}>Phone (Optional)</Text>
               <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="phone" size={16} color={muted} />
+                <Feather name="phone" size={16} color="#7C3AED" />
                 <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="9876543210" placeholderTextColor={muted} value={signupPhone} onChangeText={setSignupPhone} keyboardType="phone-pad" />
               </View>
-
               <Text style={[styles.fieldLabel, { color: muted }]}>Location (Optional)</Text>
               <View style={[styles.inputRow, { backgroundColor: bg, borderColor: border }]}>
-                <Feather name="map-pin" size={16} color={muted} />
+                <Feather name="map-pin" size={16} color="#7C3AED" />
                 <TextInput style={[styles.inputInRow, { color: fg }]} placeholder="Aapka sheher" placeholderTextColor={muted} value={signupLocation} onChangeText={setSignupLocation} />
               </View>
-
-              <TouchableOpacity style={[styles.signInBtn, loading && styles.btnDisabled]} onPress={handleSignup} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>Account Banao →</Text>}
+              <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleSignup} disabled={loading}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Account Banao →</Text>}
               </TouchableOpacity>
             </>
           )}
 
           <View style={styles.orRow}>
             <View style={[styles.orLine, { backgroundColor: border }]} />
-            <Text style={[styles.orText, { color: muted }]}>ya</Text>
+            <Text style={[styles.orText, { color: muted }]}>या</Text>
             <View style={[styles.orLine, { backgroundColor: border }]} />
           </View>
 
-          <TouchableOpacity style={[styles.googleBtn, { borderColor: border, backgroundColor: card }]} onPress={handleGooglePress}>
-            <Text style={[styles.googleBtnText, { color: fg }]}>🌐 Google se continue karen</Text>
+          <TouchableOpacity style={[styles.googleBtn, { borderColor: border, backgroundColor: bg }]} onPress={handleGooglePress}>
+            <Text style={{ fontSize: 18 }}>🌐</Text>
+            <Text style={[styles.googleBtnText, { color: fg }]}>Google se continue करें</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -447,6 +365,59 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   );
 }
 
+// ─── Edit Modal ──────────────────────────────────────────────────────────────
+function EditModal({
+  visible, onClose, onSave,
+  name, phone, location,
+  setName, setPhone, setLocation,
+  colors,
+}: {
+  visible: boolean; onClose: () => void; onSave: () => void;
+  name: string; phone: string; location: string;
+  setName: (v: string) => void; setPhone: (v: string) => void; setLocation: (v: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
+          <View style={styles.modalHandle} />
+          <Text style={[styles.modalTitle, { color: colors.foreground }]}>Profile Edit करें</Text>
+
+          {[
+            { label: "नाम", icon: "user", val: name, set: setName, placeholder: "Aapka naam" },
+            { label: "Phone", icon: "phone", val: phone, set: setPhone, placeholder: "9876543210", keyboard: "phone-pad" },
+            { label: "Location", icon: "map-pin", val: location, set: setLocation, placeholder: "Aapka sheher" },
+          ].map(({ label, icon, val, set, placeholder, keyboard }: any) => (
+            <View key={label} style={{ marginBottom: 14 }}>
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>{label}</Text>
+              <View style={[styles.inputRow, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Feather name={icon} size={16} color="#7C3AED" />
+                <TextInput
+                  style={[styles.inputInRow, { color: colors.foreground }]}
+                  placeholder={placeholder}
+                  placeholderTextColor={colors.mutedForeground}
+                  value={val}
+                  onChangeText={set}
+                  keyboardType={keyboard}
+                />
+              </View>
+            </View>
+          ))}
+
+          <TouchableOpacity style={styles.primaryBtn} onPress={onSave}>
+            <Text style={styles.primaryBtnText}>Save Changes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={onClose}>
+            <Text style={[styles.cancelBtnText, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Main Profile Screen ─────────────────────────────────────────────────────
 export default function ProfileScreen() {
   const { profile, requests, updateProfile, updateRequestStatus, deleteRequest, logout } = useApp();
   const colors = useColors();
@@ -454,8 +425,7 @@ export default function ProfileScreen() {
   const topPad = insets.top;
 
   const isLoggedIn = !!profile.id;
-
-  const [editing, setEditing] = useState(false);
+  const [editModal, setEditModal] = useState(false);
   const [editName, setEditName] = useState(profile.name);
   const [editPhone, setEditPhone] = useState(profile.phone);
   const [editLocation, setEditLocation] = useState(profile.location);
@@ -463,6 +433,8 @@ export default function ProfileScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const myRequests = requests.filter((r) => r.userId === profile.id);
+  const activeCount = myRequests.filter((r) => r.status === "active").length;
+  const resolvedCount = myRequests.filter((r) => r.status === "resolved").length;
 
   if (!isLoggedIn) {
     return <AuthScreen topPad={topPad} insets={insets} />;
@@ -475,144 +447,190 @@ export default function ProfileScreen() {
   const border = colors.border;
 
   async function pickPhoto() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Permission चाहिए", "Gallery access allow करें Settings में।");
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.7,
+      quality: 0.8,
     });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setPhotoUri(asset.uri);
-      setUploadingPhoto(true);
-      try {
-        const API_BASE =
-          process.env.EXPO_PUBLIC_API_URL ??
-          (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
-        const formData = new FormData();
-        formData.append("files", { uri: asset.uri, name: "photo.jpg", type: "image/jpeg" } as any);
-        const uploadRes = await fetch(`${API_BASE}/api/upload`, { method: "POST", body: formData });
-        const uploadData = await uploadRes.json();
-        const photoUrl: string = uploadData.urls?.[0];
-        if (photoUrl) {
-          await authApi.updatePhoto({ userId: profile.id, photoUrl });
-          updateProfile({ photoUri: photoUrl, photoUrl });
-          setPhotoUri(photoUrl);
-        }
-      } catch {
-        updateProfile({ photoUri: asset.uri });
-      } finally {
-        setUploadingPhoto(false);
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setPhotoUri(asset.uri);
+    setUploadingPhoto(true);
+
+    try {
+      const API_BASE_URL =
+        process.env.EXPO_PUBLIC_API_URL ??
+        (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
+
+      const formData = new FormData();
+      formData.append("files", { uri: asset.uri, name: "photo.jpg", type: "image/jpeg" } as any);
+
+      const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        throw new Error(err.error ?? `Upload failed (${uploadRes.status})`);
       }
+
+      const uploadData = await uploadRes.json();
+      const photoUrl: string | undefined = uploadData.urls?.[0];
+
+      if (!photoUrl) throw new Error("Server ne URL nahi diya");
+
+      await authApi.updatePhoto({ userId: profile.id, photoUrl });
+      updateProfile({ photoUri: photoUrl, photoUrl });
+      setPhotoUri(photoUrl);
+      Alert.alert("✅ Saved!", "Profile photo update ho gayi.");
+    } catch (err: any) {
+      // Revert to previous photo
+      setPhotoUri(profile.photoUri ?? profile.photoUrl ?? "");
+      Alert.alert("Upload Failed", err.message ?? "Photo save nahi ho paya. Dobara try karein.");
+    } finally {
+      setUploadingPhoto(false);
     }
   }
 
   function saveEdit() {
     updateProfile({ name: editName.trim(), phone: editPhone.trim(), location: editLocation.trim() });
-    setEditing(false);
+    setEditModal(false);
   }
+
+  const initials = (profile.name || "U")
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
-      <View style={[styles.header, { paddingTop: topPad + 12, backgroundColor: bg, borderBottomColor: border }]}>
-        <Text style={[styles.headerTitle, { color: fg }]}>Profile</Text>
-        <TouchableOpacity onPress={() => setEditing(!editing)}>
-          <Feather name={editing ? "x" : "edit-2"} size={20} color={fg} />
-        </TouchableOpacity>
-      </View>
+      <EditModal
+        visible={editModal} onClose={() => setEditModal(false)} onSave={saveEdit}
+        name={editName} phone={editPhone} location={editLocation}
+        setName={setEditName} setPhone={setEditPhone} setLocation={setEditLocation}
+        colors={colors}
+      />
 
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={["#2D0A6E", "#7C3AED", "#EC4899"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.profileBanner}>
-          <TouchableOpacity onPress={pickPhoto} style={styles.avatarWrap} disabled={uploadingPhoto}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
+        {/* ── Hero Banner ── */}
+        <LinearGradient
+          colors={["#1A0050", "#7C3AED", "#EC4899", "#FF6B00"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.hero, { paddingTop: topPad + 16 }]}
+        >
+          {/* Top row */}
+          <View style={styles.heroTopRow}>
+            <View style={styles.saharaIdChip}>
+              <Feather name="hash" size={11} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.saharaIdChipText}>{profile.saharaId || "———"}</Text>
+              <TouchableOpacity onPress={() => { void Clipboard.setStringAsync(profile.saharaId || ""); Alert.alert("Copied!"); }}>
+                <Feather name="copy" size={11} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.editHeroBtn} onPress={() => {
+              setEditName(profile.name); setEditPhone(profile.phone); setEditLocation(profile.location);
+              setEditModal(true);
+            }}>
+              <Feather name="edit-3" size={15} color="#fff" />
+              <Text style={styles.editHeroBtnText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Avatar */}
+          <TouchableOpacity onPress={pickPhoto} disabled={uploadingPhoto} style={styles.avatarContainer}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={styles.avatar} />
             ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarInitial}>{(profile.name || "U")[0].toUpperCase()}</Text>
-              </View>
+              <LinearGradient colors={["rgba(255,255,255,0.3)", "rgba(255,255,255,0.1)"]} style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitials}>{initials}</Text>
+              </LinearGradient>
             )}
-            <View style={styles.avatarEditBadge}>
+            <View style={styles.cameraBtn}>
               {uploadingPhoto
                 ? <ActivityIndicator size="small" color="#fff" />
-                : <Feather name="camera" size={11} color="#fff" />
+                : <Feather name="camera" size={12} color="#fff" />
               }
             </View>
           </TouchableOpacity>
 
-          {editing ? (
-            <TextInput
-              style={styles.editNameInput}
-              value={editName}
-              onChangeText={setEditName}
-              placeholder="Aapka naam"
-              placeholderTextColor="rgba(255,255,255,0.6)"
-            />
-          ) : (
-            <Text style={styles.profileName}>{profile.name || "User"}</Text>
-          )}
+          <Text style={styles.heroName}>{profile.name || "User"}</Text>
+          <Text style={styles.heroEmail}>{profile.email}</Text>
 
-          <View style={styles.saharaIdRow}>
-            <Text style={styles.saharaIdText}>#{profile.saharaId || "———"}</Text>
-            <TouchableOpacity onPress={() => { void Clipboard.setStringAsync(profile.saharaId || ""); Alert.alert("Copied!", "Sahara ID copied."); }}>
-              <Feather name="copy" size={13} color="rgba(255,255,255,0.8)" style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
-          </View>
+          {profile.location ? (
+            <View style={styles.heroLocationRow}>
+              <Feather name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.heroLocationText}>{profile.location}</Text>
+            </View>
+          ) : null}
         </LinearGradient>
 
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: card, borderColor: border }]}>
-            <Text style={[styles.statNum, { color: fg }]}>{profile.helpedCount}</Text>
-            <Text style={[styles.statLabel, { color: muted }]}>लोगों की मदद</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: card, borderColor: border }]}>
-            <Text style={[styles.statNum, { color: fg }]}>{profile.requestsPosted}</Text>
-            <Text style={[styles.statLabel, { color: muted }]}>Requests Posted</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: card, borderColor: border }]}>
-            <Text style={[styles.statNum, { color: fg }]}>{myRequests.filter(r => r.status === "active").length}</Text>
-            <Text style={[styles.statLabel, { color: muted }]}>Active</Text>
-          </View>
+        {/* ── Stats Row ── */}
+        <View style={[styles.statsRow, { marginTop: -1 }]}>
+          {[
+            { num: profile.helpedCount, label: "मदद की", icon: "heart", color: "#EC4899" },
+            { num: myRequests.length, label: "Requests", icon: "file-text", color: "#7C3AED" },
+            { num: activeCount, label: "Active", icon: "activity", color: "#22C55E" },
+            { num: resolvedCount, label: "Resolved", icon: "check-circle", color: "#F59E0B" },
+          ].map(({ num, label, icon, color }) => (
+            <View key={label} style={[styles.statCard, { backgroundColor: card, borderColor: border }]}>
+              <View style={[styles.statIconBox, { backgroundColor: color + "20" }]}>
+                <Feather name={icon as any} size={14} color={color} />
+              </View>
+              <Text style={[styles.statNum, { color: fg }]}>{num}</Text>
+              <Text style={[styles.statLabel, { color: muted }]}>{label}</Text>
+            </View>
+          ))}
         </View>
 
-        <View style={[styles.infoSection, { backgroundColor: card, borderColor: border }]}>
-          <Text style={[styles.sectionTitle, { color: fg }]}>Account Details</Text>
-
-          <View style={styles.infoRow}>
-            <Feather name="mail" size={15} color={muted} />
-            <Text style={[styles.infoText, { color: fg }]}>{profile.email || "—"}</Text>
+        {/* ── Account Info ── */}
+        <View style={[styles.section, { backgroundColor: card, borderColor: border }]}>
+          <View style={styles.sectionHeader}>
+            <Feather name="user" size={15} color="#7C3AED" />
+            <Text style={[styles.sectionTitle, { color: fg }]}>Account Details</Text>
           </View>
-
-          <View style={styles.infoRow}>
-            <Feather name="phone" size={15} color={muted} />
-            {editing ? (
-              <TextInput style={[styles.infoEditInput, { color: fg, borderColor: border }]} value={editPhone} onChangeText={setEditPhone} placeholder="Phone number" placeholderTextColor={muted} keyboardType="phone-pad" />
-            ) : (
-              <Text style={[styles.infoText, { color: fg }]}>{profile.phone || "—"}</Text>
-            )}
-          </View>
-
-          <View style={styles.infoRow}>
-            <Feather name="map-pin" size={15} color={muted} />
-            {editing ? (
-              <TextInput style={[styles.infoEditInput, { color: fg, borderColor: border }]} value={editLocation} onChangeText={setEditLocation} placeholder="Location" placeholderTextColor={muted} />
-            ) : (
-              <Text style={[styles.infoText, { color: fg }]}>{profile.location || "—"}</Text>
-            )}
-          </View>
-
-          {editing && (
-            <TouchableOpacity style={styles.saveBtn} onPress={saveEdit}>
-              <Text style={styles.saveBtnText}>Save Changes</Text>
-            </TouchableOpacity>
-          )}
+          {[
+            { icon: "mail", label: "Email", value: profile.email || "—", color: "#7C3AED" },
+            { icon: "phone", label: "Phone", value: profile.phone || "—", color: "#EC4899" },
+            { icon: "map-pin", label: "Location", value: profile.location || "—", color: "#FF6B00" },
+          ].map(({ icon, label, value, color }) => (
+            <View key={label} style={[styles.infoRow, { borderTopColor: border }]}>
+              <View style={[styles.infoIconBox, { backgroundColor: color + "15" }]}>
+                <Feather name={icon as any} size={14} color={color} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.infoLabel, { color: muted }]}>{label}</Text>
+                <Text style={[styles.infoValue, { color: fg }]} numberOfLines={1}>{value}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
-        <View style={styles.myReqSection}>
-          <Text style={[styles.sectionTitle, { color: fg, marginBottom: 12 }]}>Meri Requests ({myRequests.length})</Text>
+        {/* ── My Requests ── */}
+        <View style={styles.reqSection}>
+          <View style={styles.sectionHeader}>
+            <Feather name="list" size={15} color="#7C3AED" />
+            <Text style={[styles.sectionTitle, { color: fg }]}>मेरी Requests</Text>
+            <View style={[styles.countBadge, { backgroundColor: "#7C3AED20" }]}>
+              <Text style={styles.countBadgeText}>{myRequests.length}</Text>
+            </View>
+          </View>
+
           {myRequests.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: card, borderColor: border }]}>
-              <Text style={{ fontSize: 32 }}>📋</Text>
-              <Text style={[styles.emptyText, { color: muted }]}>Abhi tak koi request nahi hai</Text>
+            <View style={[styles.emptyBox, { backgroundColor: card, borderColor: border }]}>
+              <Text style={{ fontSize: 36 }}>📋</Text>
+              <Text style={[styles.emptyText, { color: muted }]}>अभी तक कोई request नहीं</Text>
+              <Text style={[styles.emptySub, { color: muted }]}>Home tab से help request डालें</Text>
             </View>
           ) : (
             myRequests.map((item) => (
@@ -626,121 +644,129 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* ── Logout ── */}
+        <TouchableOpacity
+          style={[styles.logoutBtn, { borderColor: "#FCA5A5", backgroundColor: "#FFF5F5" }]}
+          onPress={() =>
+            Alert.alert("Logout", "क्या आप logout करना चाहते हैं?", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Logout", style: "destructive", onPress: logout },
+            ])
+          }
+        >
+          <Feather name="log-out" size={18} color="#DC2626" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 18, fontWeight: "700" },
 
-  profileBanner: {
-    alignItems: "center",
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-  },
-  avatarWrap: { position: "relative", marginBottom: 10 },
-  avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: "#fff" },
-  avatarPlaceholder: {
-    width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: "#fff",
-    backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center",
-  },
-  avatarInitial: { fontSize: 32, fontWeight: "700", color: "#fff" },
-  avatarEditBadge: {
-    position: "absolute", bottom: 0, right: 0,
-    backgroundColor: "#7C3AED", borderRadius: 10, padding: 4, borderWidth: 2, borderColor: "#fff",
-  },
-  profileName: { fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 },
-  editNameInput: {
-    fontSize: 20, fontWeight: "700", color: "#fff", borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.6)", marginBottom: 4, paddingVertical: 2, minWidth: 160, textAlign: "center",
-  },
-  saharaIdRow: { flexDirection: "row", alignItems: "center" },
-  saharaIdText: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
+  // Auth
+  authHero: { alignItems: "center", paddingBottom: 28, paddingHorizontal: 20 },
+  authHeroEmoji: { fontSize: 48, marginBottom: 8 },
+  authHeroTitle: { fontSize: 24, fontWeight: "800", color: "#fff", marginBottom: 4 },
+  authHeroSub: { fontSize: 14, color: "rgba(255,255,255,0.8)" },
+  authHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingBottom: 16 },
+  authBackBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
+  authHeaderTitle: { fontSize: 17, fontWeight: "700", color: "#fff" },
+  authScroll: { padding: 16, paddingTop: 20 },
+  authCard: { borderRadius: 20, borderWidth: 1, padding: 20, marginBottom: 16 },
+  authTitle: { fontSize: 20, fontWeight: "700", marginBottom: 6, textAlign: "center" },
+  authSub: { fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 18 },
 
-  statsRow: { flexDirection: "row", gap: 10, paddingHorizontal: 14, marginTop: 14 },
-  statCard: {
-    flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: "center",
-  },
-  statNum: { fontSize: 20, fontWeight: "700" },
-  statLabel: { fontSize: 11, marginTop: 2, textAlign: "center" },
+  tabRow: { flexDirection: "row", borderRadius: 12, padding: 3, marginBottom: 20 },
+  tabBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center" },
+  tabBtnActive: { backgroundColor: "#7C3AED" },
+  tabBtnText: { fontSize: 14, fontWeight: "700" },
 
-  infoSection: {
-    margin: 14, borderRadius: 14, borderWidth: 1, padding: 14,
-  },
-  sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 12 },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
-  infoText: { fontSize: 14, flex: 1 },
-  infoEditInput: {
-    flex: 1, fontSize: 14, borderBottomWidth: 1, paddingVertical: 2,
-  },
-  saveBtn: {
-    backgroundColor: "#7C3AED", borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4,
-  },
-  saveBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  fieldLabel: { fontSize: 12, fontWeight: "600", marginBottom: 6, marginTop: 4 },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 13, paddingVertical: 11, marginBottom: 12 },
+  inputInRow: { flex: 1, fontSize: 14 },
 
-  myReqSection: { paddingHorizontal: 14, marginBottom: 8 },
-  myReqCard: { borderRadius: 12, borderWidth: 1, marginBottom: 10, overflow: "hidden" },
-  myReqCardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 },
-  myReqCardLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
-  myReqEmoji: { fontSize: 22 },
-  myReqTitle: { fontSize: 14, fontWeight: "600", flex: 1 },
-  myReqMeta: { fontSize: 12, marginTop: 2 },
-  statusBadge: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
-  statusText: { fontSize: 11, fontWeight: "600" },
-  myReqExpanded: { borderTopWidth: 1, padding: 12 },
-  myReqDesc: { fontSize: 13, marginBottom: 6, lineHeight: 18 },
-  myReqTimestamp: { fontSize: 11, marginBottom: 10 },
-  actionRow: { flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 8 },
-  actionBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
-  actionBtnText: { fontSize: 12, fontWeight: "600" },
-  deleteBtn: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  primaryBtn: { backgroundColor: "#7C3AED", borderRadius: 14, paddingVertical: 14, alignItems: "center", marginTop: 2 },
+  btnDisabled: { opacity: 0.6 },
+  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  cancelBtn: { borderWidth: 1.5, borderRadius: 14, paddingVertical: 12, alignItems: "center", marginTop: 10 },
+  cancelBtnText: { fontWeight: "600", fontSize: 14 },
+
+  orRow: { flexDirection: "row", alignItems: "center", marginVertical: 18 },
+  orLine: { flex: 1, height: 1 },
+  orText: { marginHorizontal: 12, fontSize: 13, fontWeight: "600" },
+  googleBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1.5, borderRadius: 14, paddingVertical: 13 },
+  googleBtnText: { fontWeight: "600", fontSize: 14 },
+
+  // Hero
+  hero: { alignItems: "center", paddingHorizontal: 20, paddingBottom: 32 },
+  heroTopRow: { width: "100%", flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  saharaIdChip: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  saharaIdChipText: { fontSize: 12, color: "rgba(255,255,255,0.95)", fontWeight: "700" },
+  editHeroBtn: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6 },
+  editHeroBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+
+  avatarContainer: { position: "relative", marginBottom: 14 },
+  avatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: "rgba(255,255,255,0.9)" },
+  avatarPlaceholder: { width: 96, height: 96, borderRadius: 48, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.5)" },
+  avatarInitials: { fontSize: 36, fontWeight: "800", color: "#fff" },
+  cameraBtn: { position: "absolute", bottom: 2, right: 2, backgroundColor: "#7C3AED", borderRadius: 14, width: 28, height: 28, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
+
+  heroName: { fontSize: 24, fontWeight: "800", color: "#fff", marginBottom: 4 },
+  heroEmail: { fontSize: 13, color: "rgba(255,255,255,0.75)", marginBottom: 6 },
+  heroLocationRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  heroLocationText: { fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: "500" },
+
+  // Stats
+  statsRow: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 14, gap: 8 },
+  statCard: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 10, alignItems: "center", gap: 4 },
+  statIconBox: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  statNum: { fontSize: 18, fontWeight: "800" },
+  statLabel: { fontSize: 10, textAlign: "center", fontWeight: "500" },
+
+  // Sections
+  section: { marginHorizontal: 12, borderRadius: 16, borderWidth: 1, marginBottom: 12, overflow: "hidden" },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, paddingBottom: 4 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", flex: 1 },
+  countBadge: { borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 },
+  countBadgeText: { color: "#7C3AED", fontSize: 12, fontWeight: "700" },
+
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1 },
+  infoIconBox: { width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  infoLabel: { fontSize: 11, fontWeight: "600", marginBottom: 1 },
+  infoValue: { fontSize: 14, fontWeight: "500" },
+
+  reqSection: { marginHorizontal: 12, marginBottom: 12 },
+  reqCard: { borderRadius: 14, borderWidth: 1, marginBottom: 8, overflow: "hidden" },
+  reqCardTop: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12 },
+  reqIconBox: { width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  reqEmoji: { fontSize: 20 },
+  reqTitle: { fontSize: 13, fontWeight: "600", marginBottom: 2 },
+  reqLocation: { fontSize: 11 },
+  statusPill: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusPillText: { fontSize: 10, fontWeight: "700" },
+  reqExpanded: { borderTopWidth: 1, padding: 12 },
+  reqDesc: { fontSize: 13, lineHeight: 19, marginBottom: 6 },
+  reqDate: { fontSize: 11, marginBottom: 10 },
+  reqActions: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  reqActionBtn: { flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  reqActionText: { fontSize: 12, fontWeight: "600" },
+  deleteBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   deleteBtnText: { color: "#DC2626", fontSize: 12, fontWeight: "600" },
 
-  emptyCard: {
-    borderRadius: 12, borderWidth: 1, padding: 24, alignItems: "center", gap: 8,
-  },
-  emptyText: { fontSize: 13 },
+  emptyBox: { borderRadius: 14, borderWidth: 1, padding: 28, alignItems: "center", gap: 6 },
+  emptyText: { fontSize: 14, fontWeight: "600" },
+  emptySub: { fontSize: 12 },
 
-  logoutBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    margin: 14, borderWidth: 1, borderRadius: 12, paddingVertical: 14,
-  },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginHorizontal: 12, marginTop: 4, marginBottom: 8, borderWidth: 1.5, borderRadius: 14, paddingVertical: 14 },
   logoutText: { color: "#DC2626", fontWeight: "700", fontSize: 15 },
 
-  loginScroll: { paddingHorizontal: 16, paddingTop: 20 },
-  loginCard: { borderRadius: 18, padding: 20, marginBottom: 20 },
-  loginTitle: { fontSize: 20, fontWeight: "700", marginBottom: 6, textAlign: "center" },
-  loginSub: { fontSize: 13, textAlign: "center", marginBottom: 20, lineHeight: 18 },
-  tabRow: { flexDirection: "row", marginBottom: 20, backgroundColor: "#F3F4F6", borderRadius: 10, padding: 3 },
-  tabBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: "center" },
-  tabBtnActive: { backgroundColor: "#7C3AED" },
-  tabBtnText: { fontSize: 14, fontWeight: "600" },
-  fieldLabel: { fontSize: 12, fontWeight: "600", marginBottom: 6, marginTop: 4 },
-  inputRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12,
-  },
-  inputInRow: { flex: 1, fontSize: 14 },
-  signInBtn: {
-    backgroundColor: "#7C3AED", borderRadius: 12, paddingVertical: 13, alignItems: "center", marginTop: 4,
-  },
-  btnDisabled: { opacity: 0.6 },
-  signInBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  orRow: { flexDirection: "row", alignItems: "center", marginVertical: 16 },
-  orLine: { flex: 1, height: 1 },
-  orText: { marginHorizontal: 10, fontSize: 12 },
-  googleBtn: {
-    borderWidth: 1, borderRadius: 12, paddingVertical: 12, alignItems: "center",
-  },
-  googleBtnText: { fontWeight: "600", fontSize: 14 },
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 12 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#D1D5DB", alignSelf: "center", marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 18 },
 });
