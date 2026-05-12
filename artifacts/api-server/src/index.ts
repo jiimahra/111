@@ -2,6 +2,7 @@ import { createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedGuestAccounts } from "./lib/seedGuests";
 
 const rawPort = process.env["PORT"];
 
@@ -67,4 +68,5 @@ httpServer.listen(port, (err?: Error) => {
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
+  void seedGuestAccounts();
 });
