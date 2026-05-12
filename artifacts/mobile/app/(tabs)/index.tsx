@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HelpRequest, useApp } from "@/contexts/AppContext";
 import { useLang } from "@/contexts/LangContext";
+import { socialApi } from "@/lib/social";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -49,17 +50,39 @@ function shareRequest(item: HelpRequest) {
   };
   const emoji = catEmojis[item.category] ?? "🆘";
   const typeLabel = item.helpType === "need_help" ? "🆘 मदद चाहिए" : "🤝 मदद मिल सकती है";
-  const msg = `${emoji} *Sahara – ${typeLabel}*\n\n📌 ${item.title}\n📍 ${item.location}\n\n${item.description}${item.contactPhone ? `\n\n📞 ${item.contactPhone}` : ""}\n\n🌐 saharaapphelp.com`;
+  const msg = `${emoji} *Sahara – ${typeLabel}*\n\n📌 ${item.title}\n📍 ${item.location}\n\n${item.description}\n\n🌐 saharaapphelp.com`;
   Share.share({ message: msg, title: item.title });
 }
 
-function RequestCard({ item }: { item: HelpRequest }) {
+function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const colors = useColors();
   const { lang } = useLang();
   const cat = CATEGORIES.find((c) => c.key === item.category);
   const isNeedHelp = item.helpType === "need_help";
   const catLabel = lang === "hi" ? cat?.hiLabel : cat?.enLabel;
   const hasMedia = item.mediaUrls && item.mediaUrls.length > 0;
+
+  const [showMsg, setShowMsg] = useState(false);
+  const [msgText, setMsgText] = useState("");
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgSent, setMsgSent] = useState(false);
+
+  const canMsg = !item.isAnonymous && !!item.userId && item.userId !== myId && !!myId;
+
+  const sendMsg = async () => {
+    if (!msgText.trim() || msgSending || !item.userId || !myId) return;
+    setMsgSending(true);
+    try {
+      await socialApi.sendMessage(myId, item.userId, msgText.trim());
+      setMsgSent(true);
+      setMsgText("");
+      setTimeout(() => { setMsgSent(false); setShowMsg(false); }, 2500);
+    } catch {
+      Alert.alert("Error", "Message नहीं भेजा जा सका। दोबारा try करें।");
+    } finally {
+      setMsgSending(false);
+    }
+  };
 
   return (
     <View style={[styles.requestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -126,6 +149,45 @@ function RequestCard({ item }: { item: HelpRequest }) {
           {item.isAnonymous ? "🕵️ Anonymous" : item.postedBy}
         </Text>
       </View>
+
+      {/* Inline Message Box */}
+      {canMsg && (
+        msgSent ? (
+          <View style={styles.cardMsgSentRow}>
+            <Feather name="check-circle" size={14} color="#16A34A" />
+            <Text style={styles.cardMsgSentText}>Message bhej diya! ✓</Text>
+          </View>
+        ) : showMsg ? (
+          <View style={styles.cardMsgBox}>
+            <TextInput
+              style={[styles.cardMsgInput, { backgroundColor: colors.muted, color: colors.foreground }]}
+              placeholder="Message likhein…"
+              placeholderTextColor="#9CA3AF"
+              value={msgText}
+              onChangeText={setMsgText}
+              maxLength={500}
+              autoFocus
+              returnKeyType="send"
+              onSubmitEditing={sendMsg}
+            />
+            <TouchableOpacity
+              style={[styles.cardMsgSendBtn, (!msgText.trim() || msgSending) && styles.cardMsgSendBtnOff]}
+              onPress={sendMsg}
+              disabled={!msgText.trim() || msgSending}
+            >
+              {msgSending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Feather name="send" size={15} color="#fff" />
+              }
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => setShowMsg(true)}>
+            <Feather name="message-circle" size={13} color="#fff" />
+            <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
+          </TouchableOpacity>
+        )
+      )}
     </View>
   );
 }
@@ -434,7 +496,7 @@ export default function HomeScreen() {
       <FlatList<HelpRequest>
         data={activeRequests}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <RequestCard item={item} />}
+        renderItem={({ item }) => <RequestCard item={item} myId={profile.id ?? ""} />}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 100 }]}
         ListHeaderComponent={
@@ -824,4 +886,38 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   postedByText: { fontSize: 11 },
+
+  cardMsgOpenBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "#16A34A",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignSelf: "flex-start",
+    marginTop: 8,
+  },
+  cardMsgOpenBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+
+  cardMsgBox: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8,
+  },
+  cardMsgInput: {
+    flex: 1, borderRadius: 20,
+    paddingHorizontal: 13, paddingVertical: Platform.OS === "ios" ? 9 : 7,
+    fontSize: 13,
+  },
+  cardMsgSendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#16A34A",
+    alignItems: "center", justifyContent: "center",
+    shadowColor: "#16A34A", shadowOpacity: 0.4, shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  cardMsgSendBtnOff: { backgroundColor: "#D1D5DB", shadowOpacity: 0 },
+
+  cardMsgSentRow: {
+    flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8,
+    backgroundColor: "#DCFCE7", borderRadius: 10, padding: 9,
+  },
+  cardMsgSentText: { fontSize: 12, fontWeight: "700", color: "#16A34A" },
 });
