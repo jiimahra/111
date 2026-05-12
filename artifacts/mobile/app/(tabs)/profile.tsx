@@ -610,7 +610,7 @@ function EditModal({
   colors: ReturnType<typeof useColors>;
 }) {
   return (
-    <Modal visible={visible} animationType="slide" transparent presentationStyle="overFullScreen">
+    <Modal visible={true} animationType="slide" transparent presentationStyle="overFullScreen">
       <View style={styles.modalOverlay}>
         <View style={[styles.modalSheet, { backgroundColor: colors.card }]}>
           <View style={styles.modalHandle} />
@@ -794,7 +794,8 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
       {/* ── Delete Account Modal ── */}
-      <Modal visible={deleteModal} transparent animationType="slide" onRequestClose={() => setDeleteModal(false)}>
+      {deleteModal && (
+      <Modal visible={true} transparent animationType="slide" onRequestClose={() => setDeleteModal(false)}>
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
           <View style={[styles.deleteSheet, { backgroundColor: colors.card }]}>
             <View style={styles.deleteSheetHandle} />
@@ -872,13 +873,16 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+      )}
 
+      {editModal && (
       <EditModal
-        visible={editModal} onClose={() => setEditModal(false)} onSave={saveEdit}
+        visible={true} onClose={() => setEditModal(false)} onSave={saveEdit}
         name={editName} phone={editPhone} location={editLocation}
         setName={setEditName} setPhone={setEditPhone} setLocation={setEditLocation}
         colors={colors}
       />
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* ── Hero Banner ── */}
