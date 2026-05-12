@@ -1,36 +1,55 @@
 import { Router, type IRouter } from "express";
-import bcrypt from "bcryptjs";
 import { db, usersTable, requestsTable } from "@workspace/db";
 import { eq, desc, count, gte } from "drizzle-orm";
+import { sendAdminOtpEmail } from "../lib/mailer";
 
 const router: IRouter = Router();
 
 const ADMIN_EMAIL = "saharaapphelp@gmail.com";
+
+const adminOtpStore = new Map<string, { code: string; expiresAt: number }>();
 
 async function verifyAdmin(userId: string): Promise<boolean> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   return !!user && (user.isAdmin || user.email === ADMIN_EMAIL);
 }
 
+router.post("/admin/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email || email.toLowerCase().trim() !== ADMIN_EMAIL) {
+      res.status(403).json({ error: "Sirf admin email ke liye OTP bheja ja sakta hai" });
+      return;
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    adminOtpStore.set(ADMIN_EMAIL, { code, expiresAt: Date.now() + 10 * 60 * 1000 });
+    await sendAdminOtpEmail({ code });
+    res.json({ ok: true, message: "OTP saharaapphelp@gmail.com par bhej diya gaya" });
+  } catch (err) {
+    res.status(500).json({ error: "OTP bhejne mein dikkat aayi. Dobara koshish karein." });
+  }
+});
+
 router.post("/admin/login", async (req, res) => {
   try {
-    const { email, password } = req.body as { email?: string; password?: string };
-    if (!email || !password) {
-      res.status(400).json({ error: "Email aur password zaroori hain" });
+    const { email, otp } = req.body as { email?: string; otp?: string };
+    if (!email || !otp) {
+      res.status(400).json({ error: "Email aur OTP zaroori hain" });
       return;
     }
     if (email.toLowerCase().trim() !== ADMIN_EMAIL) {
       res.status(403).json({ error: "Admin access nahi hai" });
       return;
     }
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email.toLowerCase().trim()));
-    if (!user) {
-      res.status(403).json({ error: "Admin account nahi mila. Pehle Sahara app mein register karein." });
+    const stored = adminOtpStore.get(ADMIN_EMAIL);
+    if (!stored || stored.code !== otp.trim() || Date.now() > stored.expiresAt) {
+      res.status(401).json({ error: "OTP galat hai ya expire ho gaya. Dobara OTP mangaiye." });
       return;
     }
-    const ok = await bcrypt.compare(password, user.passwordHash);
-    if (!ok) {
-      res.status(401).json({ error: "Galat password" });
+    adminOtpStore.delete(ADMIN_EMAIL);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.email, ADMIN_EMAIL));
+    if (!user) {
+      res.status(403).json({ error: "Admin account nahi mila. Pehle Sahara app mein register karein." });
       return;
     }
     res.json({ ok: true, userId: user.id, name: user.name, email: user.email });
