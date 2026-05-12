@@ -62,10 +62,22 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
 
-  const canMsg = !item.isAnonymous && !!item.userId && item.userId !== myId && !!myId;
+  const canMsg = !item.isAnonymous;
 
   const sendMsg = async () => {
-    if (!msgText.trim() || msgSending || !item.userId || !myId) return;
+    if (!msgText.trim() || msgSending) return;
+    if (!myId) {
+      Alert.alert("Login करें", "Message bhejne ke liye pehle login karein।");
+      return;
+    }
+    if (!item.userId) {
+      Alert.alert("Unavailable", "Is request ke poster ka account nahi mila।");
+      return;
+    }
+    if (item.userId === myId) {
+      Alert.alert("", "Apni khud ki request pe message nahi bhej sakte।");
+      return;
+    }
     setMsgSending(true);
     try {
       await socialApi.sendMessage(myId, item.userId, msgText.trim());
