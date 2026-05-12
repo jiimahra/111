@@ -67,6 +67,7 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const [msgText, setMsgText] = useState("");
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [msgError, setMsgError] = useState("");
 
   const canMsg = !item.isAnonymous;
 
@@ -75,17 +76,18 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
     : "मुझे आपकी मदद की जरूरत है 🙏";
 
   const doSend = async (text: string) => {
+    setMsgError("");
     if (!text.trim() || msgSending) return;
     if (!myId) {
-      Alert.alert("Login करें", "Message bhejne ke liye pehle login karein।");
-      return;
-    }
-    if (!item.userId) {
-      Alert.alert("❌ नहीं भेजा", "Is request wale ka account nahi mila। Woh shayad guest user hai।");
+      setMsgError("❌ पहले Login करें");
       return;
     }
     if (item.userId === myId) {
-      Alert.alert("", "Apni khud ki request pe message nahi bhej sakte।");
+      setMsgError("❌ यह आपकी अपनी request है");
+      return;
+    }
+    if (!item.userId) {
+      setMsgError("❌ इस user का account नहीं मिला");
       return;
     }
     setMsgSending(true);
@@ -93,9 +95,10 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
       await socialApi.sendMessage(myId, item.userId, text.trim());
       setMsgSent(true);
       setMsgText("");
+      setMsgError("");
       setTimeout(() => { setMsgSent(false); setShowMsg(false); }, 2500);
     } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "Message नहीं भेजा जा सका। दोबारा try करें।");
+      setMsgError("❌ " + (e?.message ?? "Message नहीं भेजा जा सका"));
     } finally {
       setMsgSending(false);
     }
@@ -203,7 +206,7 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
           </View>
         ) : (
           <View style={styles.cardMsgBtnRow}>
-            <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => setShowMsg(true)}>
+            <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => { setShowMsg(true); setMsgError(""); }}>
               <Feather name="message-circle" size={13} color="#fff" />
               <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
             </TouchableOpacity>
@@ -220,6 +223,9 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
               }
             </TouchableOpacity>
           </View>
+          {!!msgError && (
+            <Text style={styles.cardMsgErrorText}>{msgError}</Text>
+          )}
         )
       )}
     </View>
@@ -921,6 +927,9 @@ const styles = StyleSheet.create({
   },
   postedByText: { fontSize: 11 },
 
+  cardMsgErrorText: {
+    color: "#DC2626", fontSize: 12, fontWeight: "600", marginTop: 5,
+  },
   cardMsgBtnRow: {
     flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap",
   },
