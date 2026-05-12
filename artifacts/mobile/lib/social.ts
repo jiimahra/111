@@ -43,6 +43,18 @@ export interface Friend {
   location: string | null;
   photoUrl?: string | null;
   unreadCount: number;
+  isOnline?: boolean;
+}
+
+export interface ConversationPartner {
+  id: string;
+  name: string;
+  location: string | null;
+  photoUrl?: string | null;
+  isOnline: boolean;
+  unreadCount: number;
+  lastMessage: string;
+  lastMessageAt: string | null;
 }
 
 export interface ChatMessage {
@@ -88,4 +100,10 @@ export const socialApi = {
 
   getOnlineStatus: (userId: string) =>
     req<{ isOnline: boolean; lastSeen: string | null }>(`/online-status/${userId}`),
+
+  getConversations: (userId: string) =>
+    req<ConversationPartner[]>(`/conversations?userId=${userId}`),
+
+  unfriend: (userId: string, friendId: string) =>
+    req<{ ok: true }>("/unfriend", { method: "POST", body: { userId, friendId } }),
 };

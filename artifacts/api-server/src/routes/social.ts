@@ -5,7 +5,7 @@ import {
   friendRequestsTable,
   messagesTable,
 } from "@workspace/db";
-import { and, eq, or, ne, sql } from "drizzle-orm";
+import { and, eq, or, ne, sql, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -157,8 +157,14 @@ router.get("/social/friends", async (req, res) => {
       or(...friendIds.map((id) => eq(usersTable.id, id))),
     );
 
-  const withUnread = await Promise.all(
+  const now = Date.now();
+  const withExtra = await Promise.all(
     friends.map(async (f) => {
+      const [userRow] = await db
+        .select({ lastSeen: usersTable.lastSeen })
+        .from(usersTable)
+        .where(eq(usersTable.id, f.id))
+        .limit(1);
       const [{ count }] = await db
         .select({ count: sql<number>`count(*)` })
         .from(messagesTable)
@@ -169,11 +175,12 @@ router.get("/social/friends", async (req, res) => {
             sql`${messagesTable.readAt} IS NULL`,
           ),
         );
-      return { ...f, unreadCount: Number(count) };
+      const isOnline = !!userRow?.lastSeen && now - new Date(userRow.lastSeen).getTime() < 60_000;
+      return { ...f, unreadCount: Number(count), isOnline };
     }),
   );
 
-  res.json(withUnread);
+  res.json(withExtra);
 });
 
 /* ─── GET /api/social/messages?userId=...&friendId=... ─────────────────── */
@@ -212,6 +219,70 @@ router.post("/social/messages", async (req, res) => {
     .returning();
 
   res.json(msg);
+});
+
+/* ─── GET /api/social/conversations?userId=... ─────────────────────────── */
+router.get("/social/conversations", async (req, res) => {
+  const { userId } = req.query as { userId?: string };
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  const msgs = await db
+    .select()
+    .from(messagesTable)
+    .where(or(eq(messagesTable.fromUserId, userId), eq(messagesTable.toUserId, userId)))
+    .orderBy(desc(messagesTable.createdAt));
+
+  const partnerIds = [...new Set(msgs.map((m) =>
+    m.fromUserId === userId ? m.toUserId : m.fromUserId,
+  ))];
+
+  if (partnerIds.length === 0) return res.json([]);
+
+  const partnerUsers = await db
+    .select({ id: usersTable.id, name: usersTable.name, location: usersTable.location, photoUrl: usersTable.photoUrl, lastSeen: usersTable.lastSeen })
+    .from(usersTable)
+    .where(or(...partnerIds.map((id) => eq(usersTable.id, id))));
+
+  const now = Date.now();
+  const result = await Promise.all(partnerIds.map(async (partnerId) => {
+    const partner = partnerUsers.find((p) => p.id === partnerId);
+    if (!partner) return null;
+    const lastMsg = msgs.find((m) => m.fromUserId === partnerId || m.toUserId === partnerId);
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(messagesTable)
+      .where(and(
+        eq(messagesTable.fromUserId, partnerId),
+        eq(messagesTable.toUserId, userId),
+        sql`${messagesTable.readAt} IS NULL`,
+      ));
+    const isOnline = !!partner.lastSeen && now - new Date(partner.lastSeen).getTime() < 60_000;
+    return {
+      id: partner.id,
+      name: partner.name,
+      location: partner.location,
+      photoUrl: partner.photoUrl,
+      isOnline,
+      unreadCount: Number(count),
+      lastMessage: lastMsg?.content ?? "",
+      lastMessageAt: lastMsg?.createdAt?.toISOString() ?? null,
+    };
+  }));
+
+  res.json(result.filter(Boolean));
+});
+
+/* ─── POST /api/social/unfriend ────────────────────────────────────────── */
+router.post("/social/unfriend", async (req, res) => {
+  const { userId, friendId } = req.body as { userId?: string; friendId?: string };
+  if (!userId || !friendId) return res.status(400).json({ error: "Missing fields" });
+  await db.delete(friendRequestsTable).where(
+    or(
+      and(eq(friendRequestsTable.fromUserId, userId), eq(friendRequestsTable.toUserId, friendId)),
+      and(eq(friendRequestsTable.fromUserId, friendId), eq(friendRequestsTable.toUserId, userId)),
+    ),
+  );
+  res.json({ ok: true });
 });
 
 /* ─── POST /api/social/heartbeat ───────────────────────────────────────── */
