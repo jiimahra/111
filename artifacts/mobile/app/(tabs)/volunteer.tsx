@@ -173,27 +173,29 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.msgBtnRow}>
-            <TouchableOpacity style={styles.msgOpenBtn} onPress={() => { setShowMsg(true); setMsgError(""); }}>
-              <Feather name="message-circle" size={14} color="#fff" />
-              <Text style={styles.msgOpenBtnText}>💬 Message भेजें</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickMsgBtn}
-              onPress={sendQuickMsg}
-              disabled={msgSending}
-            >
-              {msgSending
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.quickMsgBtnText}>
-                    {item.helpType === "need_help" ? "🙋 मैं मदद करूंगा" : "🙏 मुझे मदद चाहिए"}
-                  </Text>
-              }
-            </TouchableOpacity>
-          </View>
-          {!!msgError && (
-            <Text style={styles.msgErrorText}>{msgError}</Text>
-          )}
+          <>
+            <View style={styles.msgBtnRow}>
+              <TouchableOpacity style={styles.msgOpenBtn} onPress={() => { setShowMsg(true); setMsgError(""); }}>
+                <Feather name="message-circle" size={14} color="#fff" />
+                <Text style={styles.msgOpenBtnText}>💬 Message भेजें</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickMsgBtn}
+                onPress={sendQuickMsg}
+                disabled={msgSending}
+              >
+                {msgSending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.quickMsgBtnText}>
+                      {item.helpType === "need_help" ? "🙋 मैं मदद करूंगा" : "🙏 मुझे मदद चाहिए"}
+                    </Text>
+                }
+              </TouchableOpacity>
+            </View>
+            {!!msgError && (
+              <Text style={styles.msgErrorText}>{msgError}</Text>
+            )}
+          </>
         )
       )}
     </View>

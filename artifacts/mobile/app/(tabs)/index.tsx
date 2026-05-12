@@ -205,27 +205,29 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
             </TouchableOpacity>
           </View>
         ) : (
-          <View style={styles.cardMsgBtnRow}>
-            <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => { setShowMsg(true); setMsgError(""); }}>
-              <Feather name="message-circle" size={13} color="#fff" />
-              <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.cardQuickMsgBtn}
-              onPress={sendQuickMsg}
-              disabled={msgSending}
-            >
-              {msgSending
-                ? <ActivityIndicator size="small" color="#fff" />
-                : <Text style={styles.cardQuickMsgBtnText}>
-                    {item.helpType === "need_help" ? "🙋 मैं मदद करूंगा" : "🙏 मुझे मदद चाहिए"}
-                  </Text>
-              }
-            </TouchableOpacity>
-          </View>
-          {!!msgError && (
-            <Text style={styles.cardMsgErrorText}>{msgError}</Text>
-          )}
+          <>
+            <View style={styles.cardMsgBtnRow}>
+              <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => { setShowMsg(true); setMsgError(""); }}>
+                <Feather name="message-circle" size={13} color="#fff" />
+                <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cardQuickMsgBtn}
+                onPress={sendQuickMsg}
+                disabled={msgSending}
+              >
+                {msgSending
+                  ? <ActivityIndicator size="small" color="#fff" />
+                  : <Text style={styles.cardQuickMsgBtnText}>
+                      {item.helpType === "need_help" ? "🙋 मैं मदद करूंगा" : "🙏 मुझे मदद चाहिए"}
+                    </Text>
+                }
+              </TouchableOpacity>
+            </View>
+            {!!msgError && (
+              <Text style={styles.cardMsgErrorText}>{msgError}</Text>
+            )}
+          </>
         )
       )}
     </View>
