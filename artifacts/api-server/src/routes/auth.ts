@@ -141,6 +141,10 @@ router.post("/auth/login", async (req, res) => {
     });
   }
 
+  if (user.isHidden) {
+    await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, user.id));
+  }
+
   return res.json({ user: publicUser(user) });
 });
 
@@ -370,6 +374,23 @@ router.post("/auth/reset-password", async (req, res) => {
   return res.json({ user: publicUser(user) });
 });
 
+/* ─── DELETE /api/auth/account ─────────────────────────────────────────────── */
+router.delete("/auth/account", async (req, res) => {
+  const { userId, type } = req.body as { userId?: string; type?: "temporary" | "permanent" };
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  try {
+    if (type === "permanent") {
+      await db.delete(usersTable).where(eq(usersTable.id, userId));
+    } else {
+      await db.update(usersTable).set({ isHidden: true }).where(eq(usersTable.id, userId));
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "Error deleting account");
+    res.status(500).json({ error: "Account delete nahi ho paya" });
+  }
+});
+
 router.patch("/auth/photo", async (req, res) => {
   const { userId, photoUrl } = req.body as { userId?: string; photoUrl?: string };
   if (!userId || !photoUrl) return res.status(400).json({ error: "Missing fields" });
@@ -393,6 +414,9 @@ router.get("/auth/me", async (req, res) => {
         saharaId: user.saharaId,
         userName: user.name,
       });
+    }
+    if (user.isHidden) {
+      await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, userId));
     }
     return res.json({ user: publicUser(user) });
   } catch {

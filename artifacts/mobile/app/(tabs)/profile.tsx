@@ -664,6 +664,8 @@ export default function ProfileScreen() {
   const [editLocation, setEditLocation] = useState(profile.location);
   const [photoUri, setPhotoUri] = useState(profile.photoUri ?? profile.photoUrl ?? "");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Show ban screen if user is banned (either auto-logout or login attempt)
   if (banInfo) {
@@ -757,6 +759,31 @@ export default function ProfileScreen() {
     setEditModal(false);
   }
 
+  async function handleDeleteAccount(type: "temporary" | "permanent") {
+    if (!profile.id) return;
+    setDeletingAccount(true);
+    try {
+      const API_BASE_URL =
+        process.env.EXPO_PUBLIC_API_URL ??
+        (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
+      const res = await fetch(`${API_BASE_URL}/api/auth/account`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: profile.id, type }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? "Account delete nahi hua");
+      }
+      setDeleteModal(false);
+      logout();
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Kuch gadbad ho gayi. Dobara try karein.");
+    } finally {
+      setDeletingAccount(false);
+    }
+  }
+
   const initials = (profile.name || "U")
     .split(" ")
     .map((w) => w[0])
@@ -766,6 +793,86 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: bg }]}>
+      {/* ── Delete Account Modal ── */}
+      <Modal visible={deleteModal} transparent animationType="slide" onRequestClose={() => setDeleteModal(false)}>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+          <View style={[styles.deleteSheet, { backgroundColor: colors.card }]}>
+            <View style={styles.deleteSheetHandle} />
+            <Text style={[styles.deleteSheetTitle, { color: colors.foreground }]}>⚠️ Account Delete</Text>
+            <Text style={[styles.deleteSheetSub, { color: colors.mutedForeground }]}>
+              Account delete karne ka tarika chunein:
+            </Text>
+
+            {/* Option 1 — Temporary */}
+            <TouchableOpacity
+              style={[styles.deleteOption, { borderColor: "#F59E0B", backgroundColor: "#FEF3C7" }]}
+              onPress={() =>
+                Alert.alert(
+                  "Account Temporarily Chhupao",
+                  "Aapka account aur data temporarily chhup jaayega. Dobaara login karne par sab wapas aa jaayega. Kya jaari rakhen?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Haan, Chhupao", style: "default", onPress: () => handleDeleteAccount("temporary") },
+                  ]
+                )
+              }
+              disabled={deletingAccount}
+            >
+              <View style={styles.deleteOptionTop}>
+                <Text style={styles.deleteOptionEmoji}>🙈</Text>
+                <Text style={[styles.deleteOptionTitle, { color: "#92400E" }]}>Temporarily Chhupao</Text>
+              </View>
+              <Text style={[styles.deleteOptionDesc, { color: "#B45309" }]}>
+                Account aur requests temporarily chhip jaayengi. Dobaara login karne par sab kuch wapas dikh jaayega.
+              </Text>
+            </TouchableOpacity>
+
+            {/* Option 2 — Permanent */}
+            <TouchableOpacity
+              style={[styles.deleteOption, { borderColor: "#DC2626", backgroundColor: "#FFF5F5" }]}
+              onPress={() =>
+                Alert.alert(
+                  "⚠️ Account Permanently Delete",
+                  "Account permanently delete karne par is account ya iska data wapas recover nahi kiya ja sakta hai.\n\nKya aap sach mein delete karna chahte hain?",
+                  [
+                    { text: "Nahi, Cancel", style: "cancel" },
+                    {
+                      text: "Haan, Delete Karo",
+                      style: "destructive",
+                      onPress: () => handleDeleteAccount("permanent"),
+                    },
+                  ]
+                )
+              }
+              disabled={deletingAccount}
+            >
+              <View style={styles.deleteOptionTop}>
+                <Text style={styles.deleteOptionEmoji}>🗑️</Text>
+                <Text style={[styles.deleteOptionTitle, { color: "#DC2626" }]}>Permanently Delete</Text>
+              </View>
+              <Text style={[styles.deleteOptionDesc, { color: "#B91C1C" }]}>
+                Account aur sara data hamesha ke liye delete ho jaayega. Yeh recover nahi kiya ja sakta.
+              </Text>
+            </TouchableOpacity>
+
+            {deletingAccount && (
+              <View style={{ alignItems: "center", marginTop: 12 }}>
+                <ActivityIndicator color="#7C3AED" />
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 6 }}>Processing…</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.deleteCancelBtn, { backgroundColor: colors.muted }]}
+              onPress={() => setDeleteModal(false)}
+              disabled={deletingAccount}
+            >
+              <Text style={[styles.deleteCancelText, { color: colors.foreground }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <EditModal
         visible={editModal} onClose={() => setEditModal(false)} onSave={saveEdit}
         name={editName} phone={editPhone} location={editLocation}
@@ -896,6 +1003,15 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* ── Account Delete ── */}
+        <TouchableOpacity
+          style={[styles.logoutBtn, { borderColor: "#FCD34D", backgroundColor: "#FFFBEB", marginBottom: 0 }]}
+          onPress={() => setDeleteModal(true)}
+        >
+          <Feather name="trash-2" size={18} color="#B45309" />
+          <Text style={[styles.logoutText, { color: "#B45309" }]}>Account Delete</Text>
+        </TouchableOpacity>
+
         {/* ── Logout ── */}
         <TouchableOpacity
           style={[styles.logoutBtn, { borderColor: "#FCA5A5", backgroundColor: "#FFF5F5" }]}
@@ -1015,6 +1131,29 @@ const styles = StyleSheet.create({
 
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginHorizontal: 12, marginTop: 4, marginBottom: 8, borderWidth: 1.5, borderRadius: 14, paddingVertical: 14 },
   logoutText: { color: "#DC2626", fontWeight: "700", fontSize: 15 },
+
+  // Delete Account Sheet
+  deleteSheet: {
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingTop: 8, paddingHorizontal: 16, paddingBottom: 16,
+  },
+  deleteSheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: "#D1D5DB", alignSelf: "center", marginBottom: 14,
+  },
+  deleteSheetTitle: { fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 4 },
+  deleteSheetSub: { fontSize: 13, textAlign: "center", marginBottom: 14 },
+  deleteOption: {
+    borderWidth: 1.5, borderRadius: 14, padding: 14, marginBottom: 10,
+  },
+  deleteOptionTop: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  deleteOptionEmoji: { fontSize: 20 },
+  deleteOptionTitle: { fontSize: 15, fontWeight: "700" },
+  deleteOptionDesc: { fontSize: 12, lineHeight: 17 },
+  deleteCancelBtn: {
+    borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 4,
+  },
+  deleteCancelText: { fontWeight: "700", fontSize: 15 },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
