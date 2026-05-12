@@ -33,10 +33,12 @@ type Message = {
 };
 
 const SUGGESTIONS = [
-  "मुझे भोजन की मदद चाहिए",
-  "Nearby hospitals in Ajmer",
-  "How do I post a help request?",
-  "मैं किसी की मदद करना चाहता हूँ",
+  "मुझे भोजन की मदद चाहिए 🍲",
+  "Nearby hospitals kaise dhundhu?",
+  "Help request kaise post karein?",
+  "मैं किसी की मदद करना चाहता हूँ 🤝",
+  "Injured animal mila, kya karein?",
+  "Sahara kaise kaam karta hai?",
 ];
 
 export default function AssistScreen() {

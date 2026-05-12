@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, requestsTable, usersTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { db, requestsTable, usersTable, requestLikesTable, requestCommentsTable } from "@workspace/db";
+import { eq, desc, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -173,6 +173,64 @@ router.delete("/requests/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Error deleting request");
     res.status(500).json({ error: "Failed to delete request" });
+  }
+});
+
+/* ─── GET /api/requests/:id/reactions?userId=... ───────────────────────── */
+router.get("/requests/:id/reactions", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query as { userId?: string };
+    const [[{ likesCount }], comments] = await Promise.all([
+      db.select({ likesCount: sql<number>`count(*)` }).from(requestLikesTable).where(eq(requestLikesTable.requestId, id)),
+      db.select().from(requestCommentsTable).where(eq(requestCommentsTable.requestId, id)).orderBy(desc(requestCommentsTable.createdAt)),
+    ]);
+    let liked = false;
+    if (userId) {
+      const [existing] = await db.select().from(requestLikesTable).where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, userId))).limit(1);
+      liked = !!existing;
+    }
+    res.json({ likesCount: Number(likesCount), liked, commentsCount: comments.length, comments });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch reactions" });
+  }
+});
+
+/* ─── POST /api/requests/:id/like ──────────────────────────────────────── */
+router.post("/requests/:id/like", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body as { userId?: string };
+    if (!userId) return res.status(400).json({ error: "userId required" });
+    const [existing] = await db.select().from(requestLikesTable).where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, userId))).limit(1);
+    if (existing) {
+      await db.delete(requestLikesTable).where(eq(requestLikesTable.id, existing.id));
+      res.json({ liked: false });
+    } else {
+      await db.insert(requestLikesTable).values({ requestId: id, userId });
+      res.json({ liked: true });
+    }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to toggle like" });
+  }
+});
+
+/* ─── POST /api/requests/:id/comment ───────────────────────────────────── */
+router.post("/requests/:id/comment", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, userName, content, isAnonymous } = req.body as { userId?: string; userName?: string; content?: string; isAnonymous?: boolean };
+    if (!userName || !content) return res.status(400).json({ error: "userName and content required" });
+    const [comment] = await db.insert(requestCommentsTable).values({
+      requestId: id,
+      userId: userId || null,
+      userName: isAnonymous ? "Anonymous" : userName,
+      content,
+      isAnonymous: isAnonymous ?? false,
+    }).returning();
+    res.json(comment);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add comment" });
   }
 });
 

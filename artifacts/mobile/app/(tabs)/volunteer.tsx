@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Platform,
   Share,
   StyleSheet,
@@ -17,6 +18,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HelpRequest, useApp } from "@/contexts/AppContext";
 import { useColors } from "@/hooks/useColors";
 import { socialApi } from "@/lib/social";
+
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
 
 const CATEGORIES = [
   { key: "all", label: "All", emoji: "🌟" },
@@ -52,6 +57,88 @@ function shareRequest(item: HelpRequest) {
   Share.share({ message: msg, title: item.title });
 }
 
+type CommentItem = { id: string; userName: string; content: string; createdAt: string; isAnonymous: boolean };
+
+function VolCommentsModal({
+  requestId, myId, visible, onClose, onCommentAdded,
+}: { requestId: string; myId: string; visible: boolean; onClose: () => void; onCommentAdded: () => void }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { profile } = useApp();
+  const [comments, setComments] = useState<CommentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [text, setText] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postAnon, setPostAnon] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setLoading(true);
+    fetch(`${API_BASE}/api/requests/${requestId}/reactions${myId ? `?userId=${myId}` : ""}`)
+      .then((r) => r.json())
+      .then((d) => { setComments(d.comments ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [visible, requestId]);
+
+  const postComment = async () => {
+    if (!text.trim() || posting) return;
+    setPosting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/requests/${requestId}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: myId || undefined, userName: profile?.name ?? "Sahara User", content: text.trim(), isAnonymous: postAnon }),
+      });
+      const newComment = await res.json();
+      if (newComment.id) { setComments((prev) => [newComment, ...prev]); setText(""); onCommentAdded(); }
+    } catch {} finally { setPosting(false); }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+        <View style={[volStyles.commentsSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 8 }]}>
+          <View style={volStyles.commentsSheetHandle} />
+          <View style={volStyles.commentsHeader}>
+            <Text style={[volStyles.commentsTitle, { color: colors.foreground }]}>💬 Comments</Text>
+            <TouchableOpacity onPress={onClose}><Feather name="x" size={20} color={colors.mutedForeground} /></TouchableOpacity>
+          </View>
+          {loading ? <ActivityIndicator style={{ marginVertical: 24 }} color="#7C3AED" /> :
+            comments.length === 0 ? <Text style={[volStyles.commentsEmpty, { color: colors.mutedForeground }]}>Koi comment nahi hai abhi. Pehle comment karein! 😊</Text> :
+            <FlatList data={comments} keyExtractor={(c) => c.id} style={{ maxHeight: 260 }}
+              renderItem={({ item: c }) => (
+                <View style={volStyles.commentItem}>
+                  <View style={[volStyles.commentAvatar, { backgroundColor: "#7C3AED22" }]}>
+                    <Text style={{ fontSize: 13 }}>{c.isAnonymous ? "🕵️" : "👤"}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[volStyles.commentUserName, { color: colors.foreground }]}>{c.userName}</Text>
+                    <Text style={[volStyles.commentContent, { color: colors.foreground }]}>{c.content}</Text>
+                    <Text style={[volStyles.commentTime, { color: colors.mutedForeground }]}>{new Date(c.createdAt).toLocaleDateString("en-IN")}</Text>
+                  </View>
+                </View>
+              )} />
+          }
+          <View style={volStyles.commentInputRow}>
+            <TextInput style={[volStyles.commentInput, { backgroundColor: colors.muted, color: colors.foreground }]}
+              placeholder="Comment likhein…" placeholderTextColor="#9CA3AF" value={text} onChangeText={setText}
+              maxLength={300} returnKeyType="send" onSubmitEditing={postComment} />
+            <TouchableOpacity style={[volStyles.commentSendBtn, (!text.trim() || posting) && { opacity: 0.5 }]}
+              onPress={postComment} disabled={!text.trim() || posting}>
+              {posting ? <ActivityIndicator size="small" color="#fff" /> : <Feather name="send" size={16} color="#fff" />}
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={volStyles.commentAnonToggle} onPress={() => setPostAnon((v) => !v)}>
+            <Text style={{ fontSize: 12, color: postAnon ? "#7C3AED" : colors.mutedForeground }}>
+              {postAnon ? "🕵️ Anonymous mode ON" : "👤 Anonymous mode OFF"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const colors = useColors();
   const cat = CATEGORIES.find((c) => c.key === item.category);
@@ -62,6 +149,40 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
   const [msgError, setMsgError] = useState("");
+
+  const [likesCount, setLikesCount] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(0);
+  const [showComments, setShowComments] = useState(false);
+  const [liking, setLiking] = useState(false);
+
+  useEffect(() => {
+    if (!item.id) return;
+    const url = myId
+      ? `${API_BASE}/api/requests/${item.id}/reactions?userId=${myId}`
+      : `${API_BASE}/api/requests/${item.id}/reactions`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((d) => { setLikesCount(d.likesCount ?? 0); setLiked(d.liked ?? false); setCommentsCount(d.commentsCount ?? 0); })
+      .catch(() => {});
+  }, [item.id, myId]);
+
+  const toggleLike = async () => {
+    if (!myId || liking) return;
+    setLiking(true);
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikesCount((c) => wasLiked ? Math.max(0, c - 1) : c + 1);
+    try {
+      await fetch(`${API_BASE}/api/requests/${item.id}/like`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: myId }),
+      });
+    } catch {
+      setLiked(wasLiked);
+      setLikesCount((c) => wasLiked ? c + 1 : Math.max(0, c - 1));
+    } finally { setLiking(false); }
+  };
 
   const canMsg = !item.isAnonymous;
 
@@ -131,13 +252,6 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
         </View>
         <View style={styles.metaRight}>
           <Text style={[styles.metaText, { color: colors.mutedForeground }]}>{timeAgo(item.timestamp)}</Text>
-          <TouchableOpacity
-            style={[styles.shareBtn, { backgroundColor: colors.muted }]}
-            onPress={() => shareRequest(item)}
-          >
-            <Feather name="share-2" size={13} color="#7C3AED" />
-            <Text style={styles.shareBtnText}>Share</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -197,6 +311,44 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
             )}
           </>
         )
+      )}
+
+      {/* Like / Comment / Share row */}
+      <View style={styles.reactionRow}>
+        <TouchableOpacity
+          style={[styles.reactionBtn, liked && styles.reactionBtnActive]}
+          onPress={toggleLike}
+          disabled={!myId}
+        >
+          <Text style={[styles.reactionIcon, liked && { color: "#E11D48" }]}>
+            {liked ? "❤️" : "🤍"}
+          </Text>
+          <Text style={[styles.reactionCount, liked && { color: "#E11D48" }]}>
+            {likesCount > 0 ? likesCount : "Like"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.reactionBtn} onPress={() => setShowComments(true)}>
+          <Text style={styles.reactionIcon}>💬</Text>
+          <Text style={styles.reactionCount}>
+            {commentsCount > 0 ? commentsCount : "Comment"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.reactionBtn} onPress={() => shareRequest(item)}>
+          <Text style={styles.reactionIcon}>📤</Text>
+          <Text style={styles.reactionCount}>Share</Text>
+        </TouchableOpacity>
+      </View>
+
+      {showComments && (
+        <VolCommentsModal
+          requestId={item.id}
+          myId={myId}
+          visible={showComments}
+          onClose={() => setShowComments(false)}
+          onCommentAdded={() => setCommentsCount((c) => c + 1)}
+        />
       )}
     </View>
   );
@@ -404,4 +556,53 @@ const styles = StyleSheet.create({
     backgroundColor: "#DCFCE7", borderRadius: 10, padding: 10,
   },
   sentText: { fontSize: 13, fontWeight: "700", color: "#16A34A" },
+
+  reactionRow: {
+    flexDirection: "row", alignItems: "center",
+    marginTop: 10, borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: 10,
+  },
+  reactionBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 5,
+  },
+  reactionBtnActive: {},
+  reactionIcon: { fontSize: 15 },
+  reactionCount: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+});
+
+const volStyles = StyleSheet.create({
+  commentsSheet: {
+    borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingTop: 8, paddingHorizontal: 16,
+  },
+  commentsSheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: "#D1D5DB", alignSelf: "center", marginBottom: 12,
+  },
+  commentsHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  commentsTitle: { fontSize: 16, fontWeight: "700" },
+  commentsEmpty: { textAlign: "center", marginVertical: 24, fontSize: 13 },
+  commentItem: { flexDirection: "row", gap: 10, marginBottom: 14, alignItems: "flex-start" },
+  commentAvatar: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: "center", justifyContent: "center",
+  },
+  commentUserName: { fontSize: 12, fontWeight: "700" },
+  commentContent: { fontSize: 13, marginTop: 2, lineHeight: 18 },
+  commentTime: { fontSize: 11, marginTop: 3 },
+  commentInputRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 12 },
+  commentInput: {
+    flex: 1, borderRadius: 20,
+    paddingHorizontal: 13, paddingVertical: Platform.OS === "ios" ? 9 : 7,
+    fontSize: 13,
+  },
+  commentSendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#7C3AED",
+    alignItems: "center", justifyContent: "center",
+  },
+  commentAnonToggle: { alignSelf: "flex-start", marginTop: 6, paddingVertical: 2 },
 });
