@@ -173,7 +173,7 @@ export default function TermsScreen() {
               padding: 18,
               marginBottom: 14,
               borderWidth: 1,
-              borderColor: sec.isBanned ? "#FECACA" : colors.border,
+              borderColor: sec.icon === "slash" ? "#FECACA" : colors.border,
             } as any}
           >
             {/* Section Header */}

@@ -456,7 +456,7 @@ function MenuDrawer({
 }
 
 export default function HomeScreen() {
-  const { requests } = useApp();
+  const { requests, profile } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
