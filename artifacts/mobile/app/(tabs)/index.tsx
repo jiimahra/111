@@ -70,14 +70,18 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
 
   const canMsg = !item.isAnonymous;
 
-  const sendMsg = async () => {
-    if (!msgText.trim() || msgSending) return;
+  const quickMsgText = item.helpType === "need_help"
+    ? "मैं आपकी मदद करना चाहता हूं 🙏"
+    : "मुझे आपकी मदद की जरूरत है 🙏";
+
+  const doSend = async (text: string) => {
+    if (!text.trim() || msgSending) return;
     if (!myId) {
       Alert.alert("Login करें", "Message bhejne ke liye pehle login karein।");
       return;
     }
     if (!item.userId) {
-      Alert.alert("Unavailable", "Is request ke poster ka account nahi mila।");
+      Alert.alert("❌ नहीं भेजा", "Is request wale ka account nahi mila। Woh shayad guest user hai।");
       return;
     }
     if (item.userId === myId) {
@@ -86,16 +90,19 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
     }
     setMsgSending(true);
     try {
-      await socialApi.sendMessage(myId, item.userId, msgText.trim());
+      await socialApi.sendMessage(myId, item.userId, text.trim());
       setMsgSent(true);
       setMsgText("");
       setTimeout(() => { setMsgSent(false); setShowMsg(false); }, 2500);
-    } catch {
-      Alert.alert("Error", "Message नहीं भेजा जा सका। दोबारा try करें।");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message ?? "Message नहीं भेजा जा सका। दोबारा try करें।");
     } finally {
       setMsgSending(false);
     }
   };
+
+  const sendMsg = () => doSend(msgText);
+  const sendQuickMsg = () => doSend(quickMsgText);
 
   return (
     <View style={[styles.requestCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -195,10 +202,24 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => setShowMsg(true)}>
-            <Feather name="message-circle" size={13} color="#fff" />
-            <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
-          </TouchableOpacity>
+          <View style={styles.cardMsgBtnRow}>
+            <TouchableOpacity style={styles.cardMsgOpenBtn} onPress={() => setShowMsg(true)}>
+              <Feather name="message-circle" size={13} color="#fff" />
+              <Text style={styles.cardMsgOpenBtnText}>💬 Message भेजें</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cardQuickMsgBtn}
+              onPress={sendQuickMsg}
+              disabled={msgSending}
+            >
+              {msgSending
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.cardQuickMsgBtnText}>
+                    {item.helpType === "need_help" ? "🙋 मैं मदद करूंगा" : "🙏 मुझे मदद चाहिए"}
+                  </Text>
+              }
+            </TouchableOpacity>
+          </View>
         )
       )}
     </View>
@@ -900,16 +921,25 @@ const styles = StyleSheet.create({
   },
   postedByText: { fontSize: 11 },
 
+  cardMsgBtnRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap",
+  },
   cardMsgOpenBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: "#16A34A",
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    alignSelf: "flex-start",
-    marginTop: 8,
   },
   cardMsgOpenBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  cardQuickMsgBtn: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#DC2626",
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  cardQuickMsgBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
 
   cardMsgBox: {
     flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8,
