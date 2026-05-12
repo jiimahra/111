@@ -1,8 +1,51 @@
 import { Router, type IRouter } from "express";
-import { db, requestsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { db, requestsTable, usersTable } from "@workspace/db";
+import { eq, desc, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+/* ─── GET /api/home-stats ───────────────────────────────────────────────── */
+router.get("/home-stats", async (req, res) => {
+  try {
+    const [[{ totalUsers }], [{ activeCount }], [{ resolvedCount }], [{ cityCount }], featured] =
+      await Promise.all([
+        db.select({ totalUsers: sql<number>`count(*)` }).from(usersTable),
+        db.select({ activeCount: sql<number>`count(*)` }).from(requestsTable).where(sql`${requestsTable.status} != 'resolved'`),
+        db.select({ resolvedCount: sql<number>`count(*)` }).from(requestsTable).where(eq(requestsTable.status, "resolved")),
+        db.select({ cityCount: sql<number>`count(distinct ${requestsTable.location})` }).from(requestsTable),
+        db
+          .select()
+          .from(requestsTable)
+          .where(sql`${requestsTable.status} != 'resolved' and ${requestsTable.helpType} = 'need_help'`)
+          .orderBy(desc(requestsTable.createdAt))
+          .limit(1),
+      ]);
+    const f = featured[0] ?? null;
+    res.json({
+      totalUsers: Number(totalUsers),
+      activeRequests: Number(activeCount),
+      resolvedRequests: Number(resolvedCount),
+      citiesCovered: Number(cityCount),
+      featuredRequest: f
+        ? {
+            id: f.id,
+            category: f.category,
+            helpType: f.helpType,
+            title: f.title,
+            description: f.description,
+            location: f.location,
+            postedBy: f.isAnonymous ? "Anonymous" : f.postedBy,
+            timestamp: new Date(f.createdAt).getTime(),
+            userId: f.isAnonymous ? undefined : (f.userId ?? undefined),
+            isAnonymous: f.isAnonymous ?? false,
+          }
+        : null,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching home stats");
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
 
 router.get("/requests", async (req, res) => {
   try {

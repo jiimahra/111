@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,34 @@ import { useLang } from "@/contexts/LangContext";
 import { socialApi } from "@/lib/social";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useColors } from "@/hooks/useColors";
+
+const API_BASE =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : "");
+
+interface HomeStats {
+  totalUsers: number;
+  activeRequests: number;
+  resolvedRequests: number;
+  citiesCovered: number;
+  featuredRequest: {
+    id: string; category: string; helpType: string; title: string;
+    description: string; location: string; postedBy: string;
+    timestamp: number; userId?: string; isAnonymous: boolean;
+  } | null;
+}
+
+const DAILY_QUOTES = [
+  "एक छोटी सी मदद, किसी की ज़िंदगी बदल सकती है 🌟",
+  "जब हम साथ आते हैं, तो कोई अकेला नहीं होता 🤝",
+  "सहारा है, तो हर मुश्किल आसान है 💪",
+  "आपकी मदद किसी की उम्मीद बन सकती है 🙏",
+  "मिलकर बनाते हैं बेहतर कल ✨",
+  "दिल से दिल को जोड़ता है सहारा 💜",
+  "हर हाथ बढ़ाने से बदलती है दुनिया 🌍",
+];
 
 const CATEGORIES = [
   { key: "food", emoji: "🍲", enLabel: "Food", hiLabel: "भोजन" },
@@ -510,6 +538,16 @@ export default function HomeScreen() {
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
   const unreadCount = requests.filter((r) => r.status !== "resolved").length;
 
+  const [stats, setStats] = useState<HomeStats | null>(null);
+  const dailyQuote = DAILY_QUOTES[new Date().getDay() % DAILY_QUOTES.length];
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/home-stats`)
+      .then((r) => r.json())
+      .then((d) => setStats(d))
+      .catch(() => {});
+  }, []);
+
   const activeRequests = useMemo(() => {
     let list = requests.filter((r) => r.status !== "resolved");
     if (selectedCat) list = list.filter((r) => r.category === selectedCat);
@@ -649,6 +687,50 @@ export default function HomeScreen() {
               </View>
             </LinearGradient>
 
+            {/* Daily Quote Banner */}
+            <LinearGradient
+              colors={["#2D0A6E", "#7C3AED"]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={styles.quoteBanner}
+            >
+              <Feather name="star" size={14} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.quoteText} numberOfLines={2}>{dailyQuote}</Text>
+            </LinearGradient>
+
+            {/* Impact Stats */}
+            {stats && (
+              <View style={styles.statsSection}>
+                <View style={styles.statsSectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: colors.foreground, marginBottom: 0 }]}>
+                    सहारा का असर
+                  </Text>
+                  <Text style={[styles.statsSub, { color: colors.mutedForeground }]}>
+                    Connecting hearts. Empowering communities.
+                  </Text>
+                </View>
+                <View style={styles.statsGrid}>
+                  <StatCard emoji="🙋" value={stats.totalUsers} label="Members" sublabel="सदस्य" color="#7C3AED" bg="#F3E8FF" />
+                  <StatCard emoji="🆘" value={stats.activeRequests} label="Active" sublabel="सक्रिय" color="#EC4899" bg="#FCE7F3" />
+                  <StatCard emoji="✅" value={stats.resolvedRequests} label="Resolved" sublabel="सुलझे" color="#16A34A" bg="#DCFCE7" />
+                  <StatCard emoji="🏙️" value={stats.citiesCovered} label="Cities" sublabel="शहर" color="#F97316" bg="#FFF7ED" />
+                </View>
+              </View>
+            )}
+
+            {/* Aaj ki Zarurat — Featured Request */}
+            {stats?.featuredRequest && (
+              <FeaturedRequestCard
+                request={stats.featuredRequest}
+                myId={profile.id ?? ""}
+                onHelp={() => router.push("/(tabs)/alert")}
+              />
+            )}
+
+            {/* My Contribution Card */}
+            {!!profile.id && (
+              <MyContributionCard profile={profile} colors={colors} />
+            )}
+
             {/* Categories */}
             <View style={styles.categoriesSection}>
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -702,6 +784,137 @@ export default function HomeScreen() {
           </View>
         }
       />
+    </View>
+  );
+}
+
+/* ─── StatCard ─────────────────────────────────────────────────────────── */
+function StatCard({ emoji, value, label, sublabel, color, bg }: {
+  emoji: string; value: number; label: string; sublabel: string; color: string; bg: string;
+}) {
+  return (
+    <View style={[styles.statCard, { backgroundColor: bg }]}>
+      <Text style={styles.statEmoji}>{emoji}</Text>
+      <Text style={[styles.statValue, { color }]}>{value.toLocaleString("en-IN")}</Text>
+      <Text style={[styles.statLabel, { color }]}>{label}</Text>
+      <Text style={[styles.statSublabel, { color }]}>{sublabel}</Text>
+    </View>
+  );
+}
+
+/* ─── FeaturedRequestCard ───────────────────────────────────────────────── */
+function FeaturedRequestCard({ request, myId, onHelp }: {
+  request: HomeStats["featuredRequest"] & {}; myId: string; onHelp: () => void;
+}) {
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const catEmojis: Record<string, string> = {
+    food: "🍲", medical: "🏥", job: "💼", animal: "🐾", education: "📚",
+  };
+  const catEmoji = catEmojis[request.category] ?? "🆘";
+  const canMsg = !request.isAnonymous && !!request.userId && request.userId !== myId;
+
+  const sendQuick = async () => {
+    if (!myId || !request.userId || sending) return;
+    setSending(true);
+    try {
+      await socialApi.sendMessage(myId, request.userId, "मैं आपकी मदद करना चाहता हूं 🙏");
+      setSent(true);
+    } catch { /* ignore */ } finally { setSending(false); }
+  };
+
+  return (
+    <View style={styles.featuredWrap}>
+      <LinearGradient
+        colors={["#2D0A6E", "#7C3AED", "#EC4899"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={styles.featuredGrad}
+      >
+        <View style={styles.featuredTopRow}>
+          <View style={styles.featuredBadge}>
+            <Text style={styles.featuredBadgeText}>🔥 आज की ज़रूरत</Text>
+          </View>
+          <Text style={styles.featuredCatEmoji}>{catEmoji}</Text>
+        </View>
+        <Text style={styles.featuredTitle} numberOfLines={2}>{request.title}</Text>
+        <Text style={styles.featuredDesc} numberOfLines={2}>{request.description}</Text>
+        <View style={styles.featuredMeta}>
+          <Feather name="map-pin" size={12} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.featuredMetaText}>{request.location}</Text>
+          <Text style={styles.featuredMetaDot}>·</Text>
+          <Feather name="user" size={12} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.featuredMetaText}>{request.isAnonymous ? "Anonymous" : request.postedBy}</Text>
+        </View>
+        {sent ? (
+          <View style={styles.featuredSentRow}>
+            <Feather name="check-circle" size={15} color="#4ADE80" />
+            <Text style={styles.featuredSentText}>Message bhej diya! ✓</Text>
+          </View>
+        ) : canMsg ? (
+          <TouchableOpacity style={styles.featuredHelpBtn} onPress={sendQuick} disabled={sending}>
+            {sending
+              ? <ActivityIndicator size="small" color="#7C3AED" />
+              : <><Text style={styles.featuredHelpBtnText}>🙋 मैं मदद करूंगा</Text></>
+            }
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.featuredHelpBtn} onPress={onHelp}>
+            <Text style={styles.featuredHelpBtnText}>🙏 अनुरोध देखें</Text>
+          </TouchableOpacity>
+        )}
+      </LinearGradient>
+    </View>
+  );
+}
+
+/* ─── MyContributionCard ────────────────────────────────────────────────── */
+function MyContributionCard({ profile, colors }: { profile: any; colors: any }) {
+  const firstName = profile.name?.split(" ")[0] ?? "Dost";
+  return (
+    <View style={[styles.myCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={styles.myCardTop}>
+        <View style={styles.myCardAvatar}>
+          <Text style={styles.myCardAvatarText}>
+            {profile.name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() ?? "?"}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.myCardGreet, { color: colors.foreground }]}>
+            नमस्ते, {firstName}! 👋
+          </Text>
+          <Text style={[styles.myCardSub, { color: colors.mutedForeground }]}>
+            आपका सहारा योगदान
+          </Text>
+        </View>
+      </View>
+      <View style={styles.myStatsRow}>
+        <View style={[styles.myStatPill, { backgroundColor: "#F3E8FF" }]}>
+          <Text style={styles.myStatPillEmoji}>🤝</Text>
+          <View>
+            <Text style={[styles.myStatPillValue, { color: "#7C3AED" }]}>{profile.helpedCount ?? 0}</Text>
+            <Text style={[styles.myStatPillLabel, { color: "#7C3AED" }]}>Helped</Text>
+          </View>
+        </View>
+        <View style={[styles.myStatPill, { backgroundColor: "#FCE7F3" }]}>
+          <Text style={styles.myStatPillEmoji}>📝</Text>
+          <View>
+            <Text style={[styles.myStatPillValue, { color: "#EC4899" }]}>{profile.requestsPosted ?? 0}</Text>
+            <Text style={[styles.myStatPillLabel, { color: "#EC4899" }]}>Requests</Text>
+          </View>
+        </View>
+        {!!profile.location && (
+          <View style={[styles.myStatPill, { backgroundColor: "#FFF7ED" }]}>
+            <Text style={styles.myStatPillEmoji}>📍</Text>
+            <View>
+              <Text style={[styles.myStatPillValue, { color: "#F97316", fontSize: 12 }]} numberOfLines={1}>
+                {profile.location.split(",")[0]}
+              </Text>
+              <Text style={[styles.myStatPillLabel, { color: "#F97316" }]}>Location</Text>
+            </View>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -820,6 +1033,74 @@ const styles = StyleSheet.create({
   requestMetaDot: { fontSize: 11 },
   shareBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   shareBtnText: { fontSize: 11, fontWeight: "600", color: "#7C3AED" },
+
+  quoteBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 20, paddingVertical: 12,
+  },
+  quoteText: { flex: 1, fontSize: 13, color: "rgba(255,255,255,0.92)", fontStyle: "italic", lineHeight: 19 },
+
+  statsSection: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
+  statsSectionHeader: { marginBottom: 14 },
+  statsSub: { fontSize: 12, marginTop: 3, fontStyle: "italic" },
+  statsGrid: { flexDirection: "row", gap: 10 },
+  statCard: {
+    flex: 1, alignItems: "center", justifyContent: "center",
+    borderRadius: 16, paddingVertical: 16, gap: 3,
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+  },
+  statEmoji: { fontSize: 24, marginBottom: 2 },
+  statValue: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, fontWeight: "700" },
+  statSublabel: { fontSize: 10, opacity: 0.75 },
+
+  featuredWrap: { marginHorizontal: 16, marginTop: 18 },
+  featuredGrad: { borderRadius: 20, padding: 20, gap: 10 },
+  featuredTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  featuredBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  featuredBadgeText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  featuredCatEmoji: { fontSize: 28 },
+  featuredTitle: { fontSize: 18, fontWeight: "800", color: "#fff", lineHeight: 24 },
+  featuredDesc: { fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 19 },
+  featuredMeta: { flexDirection: "row", alignItems: "center", gap: 5, flexWrap: "wrap" },
+  featuredMetaText: { fontSize: 12, color: "rgba(255,255,255,0.8)" },
+  featuredMetaDot: { fontSize: 12, color: "rgba(255,255,255,0.5)" },
+  featuredHelpBtn: {
+    marginTop: 4, backgroundColor: "#fff", borderRadius: 14,
+    paddingVertical: 13, alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, elevation: 3,
+  },
+  featuredHelpBtnText: { color: "#7C3AED", fontWeight: "800", fontSize: 15 },
+  featuredSentRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4,
+    backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 12, padding: 10,
+  },
+  featuredSentText: { color: "#4ADE80", fontWeight: "700", fontSize: 13 },
+
+  myCard: {
+    marginHorizontal: 16, marginTop: 14, borderRadius: 16,
+    padding: 16, borderWidth: 1, gap: 12,
+    shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
+  },
+  myCardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  myCardAvatar: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: "#2D0A6E", alignItems: "center", justifyContent: "center",
+  },
+  myCardAvatarText: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  myCardGreet: { fontSize: 16, fontWeight: "800" },
+  myCardSub: { fontSize: 12, marginTop: 2 },
+  myStatsRow: { flexDirection: "row", gap: 10 },
+  myStatPill: {
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10,
+  },
+  myStatPillEmoji: { fontSize: 20 },
+  myStatPillValue: { fontSize: 18, fontWeight: "800" },
+  myStatPillLabel: { fontSize: 10, fontWeight: "600" },
 
   emptyState: { alignItems: "center", paddingTop: 40, paddingHorizontal: 20, gap: 8 },
   emptyEmoji: { fontSize: 40 },
