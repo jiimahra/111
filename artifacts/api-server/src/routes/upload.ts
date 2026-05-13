@@ -43,9 +43,12 @@ router.post("/upload", upload.array("files", 10), async (req, res) => {
     const { bucketId, dirWithinBucket } = getBucketAndDir();
     const bucket = objectStorageClient.bucket(bucketId);
 
-    const domain = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : `http://localhost:${process.env.PORT ?? 8080}`;
+    const replitDomains = (process.env.REPLIT_DOMAINS ?? "").split(",").filter(Boolean);
+    const domain = replitDomains.length > 0
+      ? `https://${replitDomains[0]}`
+      : process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : `http://localhost:${process.env.PORT ?? 8080}`;
 
     const urls: string[] = [];
 
