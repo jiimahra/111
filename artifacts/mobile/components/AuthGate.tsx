@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -125,14 +126,22 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleGooglePress = (googleMode: "login" | "signup") => {
-    const redirectBack = Platform.OS !== "web" ? "mobile://" : "";
-    const redirectParam = redirectBack ? `&redirect_back=${encodeURIComponent(redirectBack)}` : "";
-    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}${redirectParam}`;
+  const handleGooglePress = async (googleMode: "login" | "signup") => {
     if (Platform.OS === "web" && typeof window !== "undefined") {
+      const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}`;
       window.location.href = url;
-    } else {
-      void Linking.openURL(url);
+      return;
+    }
+    // Native: use WebBrowser so browser auto-closes when redirected to mobile://
+    const redirectBack = encodeURIComponent("mobile://");
+    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}&redirect_back=${redirectBack}`;
+    try {
+      const result = await WebBrowser.openAuthSessionAsync(url, "mobile://");
+      if (result.type === "success" && result.url) {
+        handleOAuthUrl(result.url);
+      }
+    } catch {
+      Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
     }
   };
 
