@@ -4,7 +4,7 @@ const API_BASE =
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "");
 
-async function req<T>(path: string, options?: RequestInit & { body?: unknown }): Promise<T> {
+async function req<T>(path: string, options?: Omit<RequestInit, "body"> & { body?: unknown }): Promise<T> {
   const res = await fetch(`${API_BASE}/api/social${path}`, {
     ...options,
     headers: {

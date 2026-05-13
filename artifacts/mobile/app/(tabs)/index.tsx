@@ -538,7 +538,7 @@ function MenuDrawer({
   const { logout, profile } = useApp();
 
   const menuItems = [
-    { icon: "home" as const, label: "Home", labelHi: "होम", onPress: () => { onClose(); router.push("/(tabs)/"); } },
+    { icon: "home" as const, label: "Home", labelHi: "होम", onPress: () => { onClose(); router.push("/"); } },
     { icon: "search" as const, label: "Explore", labelHi: "एक्सप्लोर", onPress: () => { onClose(); router.push("/(tabs)/volunteer"); } },
     { icon: "plus-circle" as const, label: "Post Help", labelHi: "पोस्ट करें", onPress: () => { onClose(); router.push("/(tabs)/alert"); } },
     { icon: "activity" as const, label: "Hospitals", labelHi: "अस्पताल", onPress: () => { onClose(); router.push("/(tabs)/donate"); } },

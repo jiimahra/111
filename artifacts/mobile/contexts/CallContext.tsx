@@ -254,7 +254,7 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const wsUrl = API_BASE || "http://localhost:8080";
+    const wsUrl = API_BASE;
     const socket = io(wsUrl, {
       transports: ["websocket", "polling"],
       reconnection: true,
