@@ -485,26 +485,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             )}
           </View>
 
-          <TouchableOpacity
-            style={styles.downloadBtn}
-            onPress={() => void Linking.openURL(`${API_BASE}/api/download/sahara-app`)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={["#7c3aed", "#ec4899", "#f97316"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.downloadBtnGrad}
-            >
-              <Text style={styles.downloadBtnIcon}>📱</Text>
-              <View style={styles.downloadBtnTextCol}>
-                <Text style={styles.downloadBtnSub}>मुफ्त डाउनलोड करें</Text>
-                <Text style={styles.downloadBtnMain}>सहारा App Download करें</Text>
-              </View>
-              <Text style={styles.downloadBtnArrow}>⬇️</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           <Text style={styles.footer}>
             © Sahara · saharaapphelp.com
           </Text>
@@ -748,29 +728,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     marginBottom: 16,
   },
-
-  downloadBtn: {
-    marginTop: 20,
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#7c3aed",
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 10,
-  },
-  downloadBtnGrad: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    gap: 12,
-  },
-  downloadBtnIcon: { fontSize: 26 },
-  downloadBtnTextCol: { flex: 1 },
-  downloadBtnSub: { fontSize: 11, color: "rgba(255,255,255,0.85)", fontWeight: "500" },
-  downloadBtnMain: { fontSize: 15, color: "#fff", fontWeight: "800" },
-  downloadBtnArrow: { fontSize: 20 },
 
   footer: {
     fontSize: 12,
