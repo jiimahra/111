@@ -152,14 +152,16 @@ router.post("/auth/login", async (req, res) => {
 
 router.get("/auth/google/start", (req, res) => {
   const mode = req.query.mode === "signup" ? "signup" : "login";
+  const redirectBack = (req.query.redirect_back as string) || "";
   const appBase = getAppBaseUrl();
   const redirectUri = `${appBase}/api/auth/google/callback`;
+  const stateData = Buffer.from(JSON.stringify({ mode, redirectBack })).toString("base64");
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email profile",
-    state: mode,
+    state: stateData,
     access_type: "online",
     prompt: "select_account",
   });
@@ -168,11 +170,21 @@ router.get("/auth/google/start", (req, res) => {
 
 router.get("/auth/google/callback", async (req, res) => {
   const code = req.query.code as string | undefined;
-  const mode = req.query.state === "signup" ? "signup" : "login";
+  const rawState = (req.query.state as string) || "";
   const appBase = getAppBaseUrl();
   const redirectUri = `${appBase}/api/auth/google/callback`;
 
-  if (!code) return res.redirect(`${appBase}?g_error=cancelled`);
+  let mode = "login";
+  let finalBase = appBase;
+  try {
+    const decoded = JSON.parse(Buffer.from(rawState, "base64").toString());
+    mode = decoded.mode === "signup" ? "signup" : "login";
+    if (decoded.redirectBack) finalBase = decoded.redirectBack;
+  } catch {
+    mode = rawState === "signup" ? "signup" : "login";
+  }
+
+  if (!code) return res.redirect(`${finalBase}?g_error=cancelled`);
 
   try {
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -189,7 +201,7 @@ router.get("/auth/google/callback", async (req, res) => {
     const tokenData = await tokenRes.json() as { access_token?: string; error?: string };
     if (!tokenData.access_token) {
       req.log.error({ tokenData }, "Google token exchange failed");
-      return res.redirect(`${appBase}?g_error=token_failed`);
+      return res.redirect(`${finalBase}?g_error=token_failed`);
     }
 
     const googleUser = await getGoogleUserInfo(tokenData.access_token);
@@ -198,7 +210,7 @@ router.get("/auth/google/callback", async (req, res) => {
     let user;
     if (mode === "login") {
       const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
-      if (!existing) return res.redirect(`${appBase}?g_error=no_account`);
+      if (!existing) return res.redirect(`${finalBase}?g_error=no_account`);
       user = existing;
     } else {
       const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
@@ -222,15 +234,15 @@ router.get("/auth/google/callback", async (req, res) => {
       const params = new URLSearchParams({ g_error: "account_blocked" });
       if (!isPermanent) params.set("blocked_until", user.blockedUntil.toISOString());
       if (user.blockReason) params.set("block_reason", user.blockReason);
-      return res.redirect(`${appBase}?${params.toString()}`);
+      return res.redirect(`${finalBase}?${params.toString()}`);
     }
 
     const token = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
     pendingGoogleTokens.set(token, { user: publicUser(user), expires: Date.now() + 5 * 60 * 1000 });
-    return res.redirect(`${appBase}?g_token=${token}`);
+    return res.redirect(`${finalBase}?g_token=${token}`);
   } catch (err) {
     req.log.error({ err }, "Google OAuth callback error");
-    return res.redirect(`${appBase}?g_error=server_error`);
+    return res.redirect(`${finalBase}?g_error=server_error`);
   }
 });
 

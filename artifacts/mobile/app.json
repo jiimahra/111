@@ -22,7 +22,7 @@
     },
     "android": {
       "package": "com.sahara.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

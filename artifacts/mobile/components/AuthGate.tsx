@@ -57,17 +57,23 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  // On web: detect g_token or g_error in URL after Google OAuth callback
-  useEffect(() => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
+  // Parse query params from any URL (web or deep link)
+  const handleOAuthUrl = React.useCallback((url: string) => {
+    const queryStart = url.indexOf("?");
+    if (queryStart === -1) return;
+    const search = url.slice(queryStart);
+    const params = new URLSearchParams(search);
     const gToken = params.get("g_token");
     const gError = params.get("g_error");
     if (gToken) {
-      window.history.replaceState({}, "", window.location.pathname);
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
       verifyGoogleToken(gToken);
     } else if (gError) {
-      window.history.replaceState({}, "", window.location.pathname);
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
       if (gError === "no_account") {
         Alert.alert("Account Nahi Mila", "Is Google account se koi account nahi hai. Pehle Sign Up karein.", [
           { text: "Cancel", style: "cancel" },
@@ -91,6 +97,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // On web: detect g_token or g_error in URL after Google OAuth callback
+  useEffect(() => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      handleOAuthUrl(window.location.href);
+      return;
+    }
+    // On native: listen for deep link (mobile://...)
+    Linking.getInitialURL().then((url) => {
+      if (url) handleOAuthUrl(url);
+    });
+    const sub = Linking.addEventListener("url", ({ url }) => handleOAuthUrl(url));
+    return () => sub.remove();
+  }, [handleOAuthUrl]);
+
   const verifyGoogleToken = async (token: string) => {
     setGoogleBusy(true);
     try {
@@ -106,7 +126,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   };
 
   const handleGooglePress = (googleMode: "login" | "signup") => {
-    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}`;
+    const redirectBack = Platform.OS !== "web" ? "mobile://" : "";
+    const redirectParam = redirectBack ? `&redirect_back=${encodeURIComponent(redirectBack)}` : "";
+    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}${redirectParam}`;
     if (Platform.OS === "web" && typeof window !== "undefined") {
       window.location.href = url;
     } else {
