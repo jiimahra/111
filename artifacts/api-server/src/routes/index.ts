@@ -8,6 +8,7 @@ import requestsRouter from "./requests";
 import uploadRouter from "./upload";
 import adminRouter from "./admin";
 import hospitalsRouter from "./hospitals";
+import downloadRouter from "./download";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(requestsRouter);
 router.use(uploadRouter);
 router.use(adminRouter);
 router.use(hospitalsRouter);
+router.use(downloadRouter);
 
 export default router;

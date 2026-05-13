@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
+const APK_DOWNLOAD_URL = "/api/download/sahara-app";
+
 const ADMIN_EMAIL = "saharaapphelp@gmail.com";
 
 export default function Login() {
@@ -57,7 +59,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 gap-4">
       <Card className="w-full max-w-md shadow-lg border-primary/20">
         <CardHeader className="space-y-1 text-center">
           <div className="text-4xl mb-2">🛡️</div>
@@ -129,6 +131,23 @@ export default function Login() {
           </form>
         )}
       </Card>
+
+      <a href={APK_DOWNLOAD_URL} download="sahara-app.apk" className="w-full max-w-md">
+        <button
+          className="w-full py-3 px-6 rounded-xl font-bold text-white text-base flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-transform"
+          style={{ background: "linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #f97316 100%)" }}
+        >
+          <span className="text-2xl">📱</span>
+          <div className="text-left">
+            <div className="text-sm font-normal opacity-90">मुफ्त डाउनलोड करें</div>
+            <div>सहारा App Download करें</div>
+          </div>
+          <span className="ml-auto text-xl">⬇️</span>
+        </button>
+      </a>
+      <p className="text-xs text-muted-foreground text-center">
+        Android APK • सीधे install करें
+      </p>
     </div>
   );
 }
