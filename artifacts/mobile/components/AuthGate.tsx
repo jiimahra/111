@@ -2,9 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
-import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -46,7 +45,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<Mode>("login");
   const [busy, setBusy] = useState(false);
   const [guestBusy, setGuestBusy] = useState<number | null>(null);
-  const [googleBusy, setGoogleBusy] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
 
@@ -57,93 +55,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useState("Ajmer");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
-
-  // Parse query params from any URL (web or deep link)
-  const handleOAuthUrl = React.useCallback((url: string) => {
-    const queryStart = url.indexOf("?");
-    if (queryStart === -1) return;
-    const search = url.slice(queryStart);
-    const params = new URLSearchParams(search);
-    const gToken = params.get("g_token");
-    const gError = params.get("g_error");
-    if (gToken) {
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
-      verifyGoogleToken(gToken);
-    } else if (gError) {
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        window.history.replaceState({}, "", window.location.pathname);
-      }
-      if (gError === "no_account") {
-        Alert.alert("Account Nahi Mila", "Is Google account se koi account nahi hai. Pehle Sign Up karein.", [
-          { text: "Cancel", style: "cancel" },
-          { text: "Sign Up", onPress: () => setMode("signup") },
-        ]);
-      } else if (gError === "account_blocked") {
-        const blockedUntil = params.get("blocked_until") ?? "";
-        const blockReason = params.get("block_reason") ?? "";
-        const isPermanent = !blockedUntil ? "1" : "0";
-        const banParams = { blockedUntil, isPermanent, blockReason, userEmail: "", userName: "", saharaId: "" };
-        AsyncStorage.setItem("@sahara/ban_info_v1", JSON.stringify({
-          blockedUntil: blockedUntil || null,
-          isPermanent: !blockedUntil,
-          blockReason: blockReason || null,
-          userEmail: "", userName: "", saharaId: "",
-        })).catch(() => { /**/ });
-        router.push({ pathname: "/ban", params: banParams });
-      } else if (gError !== "cancelled") {
-        Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
-      }
-    }
-  }, []);
-
-  // On web: detect g_token or g_error in URL after Google OAuth callback
-  useEffect(() => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      handleOAuthUrl(window.location.href);
-      return;
-    }
-    // On native: listen for deep link (mobile://...)
-    Linking.getInitialURL().then((url) => {
-      if (url) handleOAuthUrl(url);
-    });
-    const sub = Linking.addEventListener("url", ({ url }) => handleOAuthUrl(url));
-    return () => sub.remove();
-  }, [handleOAuthUrl]);
-
-  const verifyGoogleToken = async (token: string) => {
-    setGoogleBusy(true);
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/google/verify?token=${token}`);
-      const data = await res.json() as { user?: any; error?: string };
-      if (!res.ok || !data.user) throw new Error(data.error ?? "Verification failed");
-      setAuthedProfile(data.user);
-    } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Google login verify nahi hua.");
-    } finally {
-      setGoogleBusy(false);
-    }
-  };
-
-  const handleGooglePress = async (googleMode: "login" | "signup") => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}`;
-      window.location.href = url;
-      return;
-    }
-    // Native: use WebBrowser so browser auto-closes when redirected to mobile://
-    const redirectBack = encodeURIComponent("mobile://");
-    const url = `${API_BASE}/api/auth/google/start?mode=${googleMode}&redirect_back=${redirectBack}`;
-    try {
-      const result = await WebBrowser.openAuthSessionAsync(url, "mobile://");
-      if (result.type === "success" && result.url) {
-        handleOAuthUrl(result.url);
-      }
-    } catch {
-      Alert.alert("Google Error", "Google se login nahi ho paya. Dobara koshish karein.");
-    }
-  };
 
   if (loading) {
     return (
@@ -368,14 +279,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
                 <View style={styles.divider}>
                   <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <GoogleBtn onPress={() => handleGooglePress("login")} busy={googleBusy} label="Continue with Google" />
-
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
                   <View style={styles.dividerLine} />
                 </View>
 
@@ -438,14 +341,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 </View>
 
                 <PrimaryBtn label="Create account" onPress={handleSignup} busy={busy} />
-
-                <View style={[styles.divider, { marginTop: 16 }]}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <GoogleBtn onPress={() => handleGooglePress("signup")} busy={googleBusy} label="Sign up with Google" />
 
                 <Text style={styles.terms}>
                   By signing up you agree to our{" "}
@@ -598,21 +493,6 @@ function PrimaryBtn({ label, onPress, busy }: { label: string; onPress: () => vo
       >
         {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{label}</Text>}
       </LinearGradient>
-    </TouchableOpacity>
-  );
-}
-
-function GoogleBtn({ onPress, busy, label }: { onPress: () => void; busy: boolean; label: string }) {
-  return (
-    <TouchableOpacity style={styles.googleBtn} onPress={onPress} disabled={busy} activeOpacity={0.85}>
-      {busy ? (
-        <ActivityIndicator color="#444" size="small" />
-      ) : (
-        <>
-          <Text style={styles.googleIcon}>G</Text>
-          <Text style={styles.googleBtnText}>{label}</Text>
-        </>
-      )}
     </TouchableOpacity>
   );
 }
@@ -846,22 +726,4 @@ const styles = StyleSheet.create({
   guestName: { fontSize: 12, fontWeight: "700", color: "#4B5563", textAlign: "center" },
   guestCity: { fontSize: 11, color: "#7C3AED", fontWeight: "600" },
 
-  googleBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    borderRadius: 14,
-    paddingVertical: 14,
-    gap: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  googleIcon: { fontSize: 17, fontWeight: "900", color: "#4285F4" },
-  googleBtnText: { fontSize: 15, fontWeight: "700", color: "#111827" },
 });
