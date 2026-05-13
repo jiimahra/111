@@ -2,12 +2,12 @@ import { Router } from "express";
 
 const router = Router();
 
-router.get("/api/download/sahara-app", (req, res) => {
-  const apkUrl = process.env.APK_DOWNLOAD_URL;
-  if (!apkUrl) {
-    return res.status(404).json({ error: "APK abhi available nahi hai. Jaldi aayega!" });
-  }
-  res.redirect(302, apkUrl);
+const APK_URL =
+  process.env.APK_DOWNLOAD_URL ||
+  "https://expo.dev/artifacts/eas/oh8jc3zuDoLavHTrtbJzVo.apk";
+
+router.get("/download/sahara-app", (req, res) => {
+  res.redirect(302, APK_URL);
 });
 
 export default router;
