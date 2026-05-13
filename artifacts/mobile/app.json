@@ -22,7 +22,9 @@
     },
     "android": {
       "package": "com.sahara.app",
-      "versionCode": 3,
+      "versionCode": 4,
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
