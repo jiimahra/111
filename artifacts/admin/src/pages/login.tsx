@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,53 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 
 const ADMIN_EMAIL = "saharaapphelp@gmail.com";
+const APK_VERSION_KEY = "saharaApkDownloadedVersion";
+
+function ApkDownloadButton() {
+  const [apkVersion, setApkVersion] = useState<string | null>(null);
+  const [apkExists, setApkExists] = useState(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/apk-version")
+      .then(r => r.json())
+      .then((data: { exists: boolean; version: string | null }) => {
+        if (!data.exists || !data.version) return;
+        setApkExists(true);
+        setApkVersion(data.version);
+        const storedVersion = localStorage.getItem(APK_VERSION_KEY);
+        setHasUpdate(!!storedVersion && storedVersion !== data.version);
+      })
+      .catch(() => {});
+  }, []);
+
+  function handleDownload() {
+    if (apkVersion) {
+      localStorage.setItem(APK_VERSION_KEY, apkVersion);
+      setHasUpdate(false);
+    }
+    window.location.href = "/api/download/sahara-app";
+  }
+
+  if (!apkExists) return null;
+
+  return (
+    <button
+      onClick={handleDownload}
+      className="w-full max-w-md"
+    >
+      {hasUpdate ? (
+        <div className="w-full flex items-center justify-center gap-2 rounded-md border-2 border-orange-400 bg-orange-50 hover:bg-orange-100 text-orange-700 font-semibold px-4 py-3 transition-colors">
+          🔄 नया Update आया है — अभी Download करें!
+        </div>
+      ) : (
+        <div className="w-full flex items-center justify-center gap-2 rounded-md border border-primary/30 hover:bg-primary/10 text-foreground px-4 py-3 transition-colors">
+          📱 Sahara APK Download Karein
+        </div>
+      )}
+    </button>
+  );
+}
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -130,16 +177,7 @@ export default function Login() {
         )}
       </Card>
 
-      <a
-        href="/api/download/sahara-app"
-        download
-        className="w-full max-w-md"
-      >
-        <Button variant="outline" className="w-full border-primary/30 hover:bg-primary/10">
-          📱 Sahara APK Download Karein
-        </Button>
-      </a>
-
+      <ApkDownloadButton />
     </div>
   );
 }

@@ -63,6 +63,20 @@ router.delete("/admin/delete-apk", async (req, res) => {
   }
 });
 
+router.get("/apk-version", async (req, res) => {
+  try {
+    const bucket = getBucket();
+    const file = bucket.file(APK_OBJECT_NAME);
+    const [exists] = await file.exists();
+    if (!exists) { res.json({ exists: false, version: null }); return; }
+    const [metadata] = await file.getMetadata();
+    res.setHeader("Cache-Control", "no-cache");
+    res.json({ exists: true, version: metadata.updated ?? metadata.timeCreated ?? null });
+  } catch {
+    res.json({ exists: false, version: null });
+  }
+});
+
 router.get("/admin/apk-status", async (req, res) => {
   try {
     const bucket = getBucket();
