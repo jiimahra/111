@@ -131,7 +131,7 @@ export default function Login() {
       </Card>
 
       <a
-        href="https://expo.dev/artifacts/eas/4CHa2dAwZax9jxF3XyPddD.apk"
+        href="/api/download/sahara-app"
         download
         className="w-full max-w-md"
       >

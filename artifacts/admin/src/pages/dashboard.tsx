@@ -1,8 +1,11 @@
+import { useState, useRef } from "react";
 import { useStats } from "@/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, HeartHandshake, CheckCircle2, Activity } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, HeartHandshake, CheckCircle2, Activity, Upload, Smartphone } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const categoryColors: Record<string, string> = {
   "भोजन (food)": "hsl(var(--chart-1))",
@@ -11,6 +14,103 @@ const categoryColors: Record<string, string> = {
   "पशु (animal)": "hsl(var(--chart-4))",
   "शिक्षा (education)": "hsl(var(--chart-5))",
 };
+
+function ApkManager() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [message, setMessage] = useState("");
+  const queryClient = useQueryClient();
+
+  const session = JSON.parse(localStorage.getItem("adminSession") || "{}");
+
+  const { data: status, isLoading } = useQuery({
+    queryKey: ["apk-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/apk-status");
+      return res.json() as Promise<{ exists: boolean; size?: number; updated?: string }>;
+    },
+  });
+
+  const { mutate: uploadApk, isPending } = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("apk", file);
+      formData.append("userId", session.userId ?? "");
+      const res = await fetch("/api/admin/upload-apk", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      return data;
+    },
+    onSuccess: () => {
+      setMessage("✅ APK successfully upload ho gaya!");
+      queryClient.invalidateQueries({ queryKey: ["apk-status"] });
+    },
+    onError: (err: any) => setMessage(`❌ Error: ${err.message}`),
+  });
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMessage("");
+    uploadApk(file);
+  }
+
+  const sizeInMB = status?.size ? (Number(status.size) / 1024 / 1024).toFixed(1) : null;
+  const updatedDate = status?.updated ? new Date(status.updated).toLocaleString("hi-IN") : null;
+
+  return (
+    <Card className="border-none shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Smartphone className="h-5 w-5 text-primary" />
+          APK Management
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-12 w-full" />
+        ) : status?.exists ? (
+          <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+            <p className="font-medium text-green-600">✅ APK Available for Download</p>
+            {sizeInMB && <p className="text-muted-foreground">Size: {sizeInMB} MB</p>}
+            {updatedDate && <p className="text-muted-foreground">Last Updated: {updatedDate}</p>}
+            <a
+              href="/api/download/sahara-app"
+              className="text-primary underline text-xs"
+              target="_blank"
+            >
+              Download Link: /api/download/sahara-app
+            </a>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3 text-sm text-yellow-800">
+            ⚠️ Koi APK upload nahi hua abhi. Naya APK upload karein.
+          </div>
+        )}
+
+        {message && (
+          <p className="text-sm font-medium">{message}</p>
+        )}
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".apk"
+          className="hidden"
+          onChange={handleFile}
+        />
+        <Button
+          onClick={() => fileRef.current?.click()}
+          disabled={isPending}
+          className="w-full"
+          variant="outline"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {isPending ? "Upload ho raha hai..." : status?.exists ? "Naya APK Upload Karein" : "APK Upload Karein"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useStats();
@@ -72,7 +172,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="category" tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: "hsl(var(--muted))" }}
                     contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }}
                   />
@@ -99,8 +199,8 @@ export default function Dashboard() {
                   <div className="flex-1 space-y-1">
                     <div className="text-sm font-medium">{loc.location}</div>
                     <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary" 
+                      <div
+                        className="h-full bg-primary"
                         style={{ width: `${(loc.count / stats.topLocations[0].count) * 100}%` }}
                       />
                     </div>
@@ -112,6 +212,8 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <ApkManager />
     </div>
   );
 }
