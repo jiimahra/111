@@ -64,7 +64,7 @@ function VolCommentsModal({
 }: { requestId: string; myId: string; visible: boolean; onClose: () => void; onCommentAdded: () => void }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile } = useApp();
+  const { profile, apiToken } = useApp();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
@@ -86,7 +86,10 @@ function VolCommentsModal({
     try {
       const res = await fetch(`${API_BASE}/api/requests/${requestId}/comment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiToken ? { "x-sahara-token": apiToken } : {}),
+        },
         body: JSON.stringify({ userId: myId || undefined, userName: profile?.name ?? "Sahara User", content: text.trim(), isAnonymous: postAnon }),
       });
       const newComment = await res.json();
@@ -141,6 +144,7 @@ function VolCommentsModal({
 
 function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const colors = useColors();
+  const { apiToken } = useApp();
   const cat = CATEGORIES.find((c) => c.key === item.category);
   const isNeedHelp = item.helpType === "need_help";
 
@@ -175,8 +179,11 @@ function ExploreCard({ item, myId }: { item: HelpRequest; myId: string }) {
     setLikesCount((c) => wasLiked ? Math.max(0, c - 1) : c + 1);
     try {
       await fetch(`${API_BASE}/api/requests/${item.id}/like`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: myId }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiToken ? { "x-sahara-token": apiToken } : {}),
+        },
       });
     } catch {
       setLiked(wasLiked);

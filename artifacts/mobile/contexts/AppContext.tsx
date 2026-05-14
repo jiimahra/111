@@ -64,6 +64,7 @@ interface AppContextType {
   setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => void;
   setBanInfo: (info: BanInfo | null) => void;
   storeApiToken: (token: string) => Promise<void>;
+  apiToken: string;
   logout: () => void;
   loading: boolean;
   refreshRequests: () => Promise<void>;
@@ -97,6 +98,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [banInfo, setBanInfoState] = useState<BanInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [apiToken, setApiTokenState] = useState<string>("");
   const initialized = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const apiTokenRef = useRef<string>("");
@@ -212,6 +214,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const tokenStr = await AsyncStorage.getItem(TOKEN_KEY);
       if (tokenStr) {
         apiTokenRef.current = tokenStr;
+        setApiTokenState(tokenStr);
         setSocialApiToken(tokenStr);
       }
 
@@ -293,6 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const storeApiToken = useCallback(async (token: string) => {
     apiTokenRef.current = token;
+    setApiTokenState(token);
     setSocialApiToken(token);
     await AsyncStorage.setItem(TOKEN_KEY, token);
   }, []);
@@ -409,6 +413,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProfile(DEFAULT_PROFILE);
     void saveProfile(DEFAULT_PROFILE);
     apiTokenRef.current = "";
+    setApiTokenState("");
     setSocialApiToken(null);
     void AsyncStorage.removeItem(TOKEN_KEY);
     // Don't clear banInfo on logout — keep it so ban screen shows
@@ -428,6 +433,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthedProfile,
         setBanInfo,
         storeApiToken,
+        apiToken,
         logout,
         loading,
         refreshRequests: fetchRequests,

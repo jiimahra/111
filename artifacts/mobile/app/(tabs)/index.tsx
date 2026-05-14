@@ -62,6 +62,7 @@ function shareRequest(item: HelpRequest) {
 function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
   const colors = useColors();
   const { lang } = useLang();
+  const { apiToken } = useApp();
   const cat = CATEGORIES.find((c) => c.key === item.category);
   const isNeedHelp = item.helpType === "need_help";
   const catLabel = lang === "hi" ? cat?.hiLabel : cat?.enLabel;
@@ -103,8 +104,10 @@ function RequestCard({ item, myId }: { item: HelpRequest; myId: string }) {
     try {
       await fetch(`${API_BASE}/api/requests/${item.id}/like`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: myId }),
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiToken ? { "x-sahara-token": apiToken } : {}),
+        },
       });
     } catch {
       setLiked(wasLiked);
@@ -336,7 +339,7 @@ function CommentsModal({
 }) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { profile } = useApp();
+  const { profile, apiToken } = useApp();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState("");
@@ -358,7 +361,10 @@ function CommentsModal({
     try {
       const res = await fetch(`${API_BASE}/api/requests/${requestId}/comment`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiToken ? { "x-sahara-token": apiToken } : {}),
+        },
         body: JSON.stringify({
           userId: myId || undefined,
           userName: myName ?? profile?.name ?? "Sahara User",

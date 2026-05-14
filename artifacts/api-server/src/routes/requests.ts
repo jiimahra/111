@@ -66,6 +66,7 @@ router.get("/requests", async (req, res) => {
       timestamp: new Date(r.createdAt).getTime(),
       mediaUrls: r.mediaUrls ?? [],
       isAnonymous: r.isAnonymous ?? false,
+      userId: r.isAnonymous ? undefined : (r.userId ?? undefined),
     }));
     res.json({ requests: mapped });
   } catch (err) {
