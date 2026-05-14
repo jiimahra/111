@@ -3,7 +3,7 @@ import { useStats } from "@/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Users, HeartHandshake, CheckCircle2, Activity, Upload, Smartphone } from "lucide-react";
+import { Users, HeartHandshake, CheckCircle2, Activity, Upload, Smartphone, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -28,6 +28,24 @@ function ApkManager() {
       const res = await fetch("/api/admin/apk-status");
       return res.json() as Promise<{ exists: boolean; size?: number; updated?: string }>;
     },
+  });
+
+  const { mutate: deleteApk, isPending: isDeleting } = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/admin/delete-apk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: session.userId ?? "" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Delete failed");
+      return data;
+    },
+    onSuccess: () => {
+      setMessage("🗑️ APK delete ho gaya!");
+      queryClient.invalidateQueries({ queryKey: ["apk-status"] });
+    },
+    onError: (err: any) => setMessage(`❌ Error: ${err.message}`),
   });
 
   const { mutate: uploadApk, isPending } = useMutation({
@@ -98,15 +116,33 @@ function ApkManager() {
           className="hidden"
           onChange={handleFile}
         />
-        <Button
-          onClick={() => fileRef.current?.click()}
-          disabled={isPending}
-          className="w-full"
-          variant="outline"
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          {isPending ? "Upload ho raha hai..." : status?.exists ? "Naya APK Upload Karein" : "APK Upload Karein"}
-        </Button>
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => fileRef.current?.click()}
+            disabled={isPending || isDeleting}
+            className="flex-1"
+            variant="outline"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            {isPending ? "Upload ho raha hai..." : status?.exists ? "Naya APK Upload Karein" : "APK Upload Karein"}
+          </Button>
+
+          {status?.exists && (
+            <Button
+              variant="destructive"
+              disabled={isDeleting || isPending}
+              onClick={() => {
+                if (confirm("Kya aap sach mein APK delete karna chahte hain?")) {
+                  deleteApk();
+                }
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {isDeleting ? "Delete ho raha..." : "Delete"}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

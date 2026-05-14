@@ -48,6 +48,21 @@ router.post("/admin/upload-apk", upload.single("apk"), async (req, res) => {
   }
 });
 
+router.delete("/admin/delete-apk", async (req, res) => {
+  try {
+    const { userId } = req.body as { userId?: string };
+    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const bucket = getBucket();
+    const file = bucket.file(APK_OBJECT_NAME);
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ error: "Koi APK nahi hai delete karne ke liye" }); return; }
+    await file.delete();
+    res.json({ ok: true, message: "APK delete ho gaya!" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Delete failed", detail: err?.message });
+  }
+});
+
 router.get("/admin/apk-status", async (req, res) => {
   try {
     const bucket = getBucket();
