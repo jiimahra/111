@@ -17,6 +17,7 @@ export const usersTable = pgTable("users", {
   blockedUntil: timestamp("blocked_until", { withTimezone: true }),
   blockReason: text("block_reason"),
   isHidden: boolean("is_hidden").notNull().default(false),
+  apiToken: text("api_token"),
 });
 
 export type User = typeof usersTable.$inferSelect;

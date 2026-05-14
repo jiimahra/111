@@ -4,11 +4,22 @@ const API_BASE =
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "");
 
+let _apiToken: string | null = null;
+
+export function setApiToken(token: string | null) {
+  _apiToken = token;
+}
+
+function authHeader(): Record<string, string> {
+  return _apiToken ? { "x-sahara-token": _apiToken } : {};
+}
+
 async function req<T>(path: string, options?: Omit<RequestInit, "body"> & { body?: unknown }): Promise<T> {
   const res = await fetch(`${API_BASE}/api/social${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...authHeader(),
       ...(options?.headers ?? {}),
     },
     body: options?.body ? JSON.stringify(options.body) : undefined,
@@ -65,17 +76,17 @@ export interface ChatMessage {
 }
 
 export const socialApi = {
-  getUsers: (userId: string) =>
-    req<SocialUser[]>(`/users?userId=${userId}`),
+  getUsers: (_userId: string) =>
+    req<SocialUser[]>(`/users?userId=${_userId}`),
 
-  sendRequest: (fromUserId: string, toUserId: string) =>
-    req<{ ok: true }>("/friend-request", { method: "POST", body: { fromUserId, toUserId } }),
+  sendRequest: (_fromUserId: string, toUserId: string) =>
+    req<{ ok: true }>("/friend-request", { method: "POST", body: { toUserId } }),
 
   cancelRequest: (requestId: string) =>
     req<{ ok: true }>(`/friend-request/${requestId}/cancel`, { method: "POST" }),
 
-  getRequests: (userId: string) =>
-    req<FriendRequest[]>(`/friend-requests?userId=${userId}`),
+  getRequests: (_userId: string) =>
+    req<FriendRequest[]>(`/friend-requests?userId=${_userId}`),
 
   acceptRequest: (requestId: string) =>
     req<{ ok: true }>(`/friend-request/${requestId}/accept`, { method: "POST" }),
@@ -83,27 +94,27 @@ export const socialApi = {
   declineRequest: (requestId: string) =>
     req<{ ok: true }>(`/friend-request/${requestId}/decline`, { method: "POST" }),
 
-  getFriends: (userId: string) =>
-    req<Friend[]>(`/friends?userId=${userId}`),
+  getFriends: (_userId: string) =>
+    req<Friend[]>(`/friends?userId=${_userId}`),
 
-  getMessages: (userId: string, friendId: string) =>
-    req<ChatMessage[]>(`/messages?userId=${userId}&friendId=${friendId}`),
+  getMessages: (_userId: string, friendId: string) =>
+    req<ChatMessage[]>(`/messages?friendId=${friendId}`),
 
-  sendMessage: (fromUserId: string, toUserId: string, content: string) =>
-    req<ChatMessage>("/messages", { method: "POST", body: { fromUserId, toUserId, content } }),
+  sendMessage: (_fromUserId: string, toUserId: string, content: string) =>
+    req<ChatMessage>("/messages", { method: "POST", body: { toUserId, content } }),
 
-  markRead: (userId: string, friendId: string) =>
-    req<{ ok: true }>("/messages/read", { method: "POST", body: { userId, friendId } }),
+  markRead: (_userId: string, friendId: string) =>
+    req<{ ok: true }>("/messages/read", { method: "POST", body: { friendId } }),
 
-  heartbeat: (userId: string) =>
-    req<{ ok: true }>("/heartbeat", { method: "POST", body: { userId } }),
+  heartbeat: (_userId: string) =>
+    req<{ ok: true }>("/heartbeat", { method: "POST", body: {} }),
 
   getOnlineStatus: (userId: string) =>
     req<{ isOnline: boolean; lastSeen: string | null }>(`/online-status/${userId}`),
 
-  getConversations: (userId: string) =>
-    req<ConversationPartner[]>(`/conversations?userId=${userId}`),
+  getConversations: (_userId: string) =>
+    req<ConversationPartner[]>(`/conversations?userId=${_userId}`),
 
-  unfriend: (userId: string, friendId: string) =>
-    req<{ ok: true }>("/unfriend", { method: "POST", body: { userId, friendId } }),
+  unfriend: (_userId: string, friendId: string) =>
+    req<{ ok: true }>("/unfriend", { method: "POST", body: { friendId } }),
 };

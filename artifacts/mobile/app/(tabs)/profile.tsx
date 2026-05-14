@@ -277,7 +277,7 @@ function buildBanDurText(ban: BanInfo): string {
 }
 
 function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: number } }) {
-  const { setAuthedProfile, setBanInfo } = useApp();
+  const { setAuthedProfile, setBanInfo, storeApiToken } = useApp();
   const colors = useColors();
 
   // ── ALL state hooks at top ────────────────────────────────────────────────
@@ -346,6 +346,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
         return;
       }
       setAuthedProfile(data.user);
+      if (data.apiToken) await storeApiToken(data.apiToken);
     } catch (e: any) {
       Alert.alert("Network Error", e?.message ?? "Internet connection check karein.");
     } finally {
@@ -386,14 +387,15 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
     }
     setLoading(true);
     try {
-      const { user } = await authApi.signup({
+      const result = await authApi.signup({
         name: signupName.trim(),
         email: signupEmail.trim(),
         password: signupPassword,
         phone: signupPhone.trim() || undefined,
         location: signupLocation.trim() || undefined,
       });
-      setAuthedProfile(user);
+      setAuthedProfile(result.user);
+      if (result.apiToken) await storeApiToken(result.apiToken);
     } catch (err: any) {
       Alert.alert("Signup Failed", err.message ?? "Account nahi ban paya.");
     } finally {
@@ -417,8 +419,9 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
     if (!resetCode.trim() || !resetNewPw) { Alert.alert("Required", "Code aur naya password bharo."); return; }
     setLoading(true);
     try {
-      const { user } = await authApi.resetPassword({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: resetNewPw });
-      setAuthedProfile(user);
+      const resetResult = await authApi.resetPassword({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: resetNewPw });
+      setAuthedProfile(resetResult.user);
+      if (resetResult.apiToken) await storeApiToken(resetResult.apiToken);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Password reset nahi hua.");
     } finally { setLoading(false); }

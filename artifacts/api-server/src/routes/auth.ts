@@ -4,12 +4,13 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
 import { sendResetEmail } from "../lib/mailer";
+import { generateApiToken } from "../lib/auth-middleware";
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
 
 // One-time tokens after Google OAuth callback (5 min expiry)
-const pendingGoogleTokens = new Map<string, { user: ReturnType<typeof publicUser>; expires: number }>();
+const pendingGoogleTokens = new Map<string, { user: ReturnType<typeof publicUser>; apiToken: string; expires: number }>();
 setInterval(() => {
   const now = Date.now();
   for (const [k, v] of pendingGoogleTokens.entries()) {
@@ -108,7 +109,9 @@ router.post("/auth/signup", async (req, res) => {
     .values({ saharaId, email, passwordHash, name, phone: phone ?? null, location: location ?? null, isAdmin })
     .returning();
 
-  return res.json({ user: publicUser(user) });
+  const signupToken = generateApiToken();
+  await db.update(usersTable).set({ apiToken: signupToken }).where(eq(usersTable.id, user.id));
+  return res.json({ user: publicUser(user), apiToken: signupToken });
 });
 
 router.post("/auth/login", async (req, res) => {
@@ -145,7 +148,9 @@ router.post("/auth/login", async (req, res) => {
     await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, user.id));
   }
 
-  return res.json({ user: publicUser(user) });
+  const loginToken = generateApiToken();
+  await db.update(usersTable).set({ apiToken: loginToken }).where(eq(usersTable.id, user.id));
+  return res.json({ user: publicUser(user), apiToken: loginToken });
 });
 
 // ─── Backend Google OAuth flow ───────────────────────────────────────────────
@@ -237,8 +242,10 @@ router.get("/auth/google/callback", async (req, res) => {
       return res.redirect(`${finalBase}?${params.toString()}`);
     }
 
+    const gApiToken = generateApiToken();
+    await db.update(usersTable).set({ apiToken: gApiToken }).where(eq(usersTable.id, user.id));
     const token = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-    pendingGoogleTokens.set(token, { user: publicUser(user), expires: Date.now() + 5 * 60 * 1000 });
+    pendingGoogleTokens.set(token, { user: publicUser(user), apiToken: gApiToken, expires: Date.now() + 5 * 60 * 1000 });
     return res.redirect(`${finalBase}?g_token=${token}`);
   } catch (err) {
     req.log.error({ err }, "Google OAuth callback error");
@@ -255,7 +262,7 @@ router.get("/auth/google/verify", (req, res) => {
     return res.status(410).json({ error: "Token expired. Please try Google login again." });
   }
   pendingGoogleTokens.delete(token);
-  return res.json({ user: entry.user });
+  return res.json({ user: entry.user, apiToken: entry.apiToken });
 });
 
 // ─── Legacy access-token based endpoints (kept for compatibility) ─────────────
@@ -378,12 +385,13 @@ router.post("/auth/reset-password", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
+  const resetTok = generateApiToken();
   await db
     .update(usersTable)
-    .set({ passwordHash, resetCode: null, resetCodeExpiresAt: null })
+    .set({ passwordHash, resetCode: null, resetCodeExpiresAt: null, apiToken: resetTok })
     .where(eq(usersTable.id, user.id));
 
-  return res.json({ user: publicUser(user) });
+  return res.json({ user: publicUser(user), apiToken: resetTok });
 });
 
 /* ─── DELETE /api/auth/account ─────────────────────────────────────────────── */

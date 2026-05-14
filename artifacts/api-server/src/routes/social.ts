@@ -6,13 +6,13 @@ import {
   messagesTable,
 } from "@workspace/db";
 import { and, eq, or, ne, sql, desc } from "drizzle-orm";
+import { requireAuth } from "../lib/auth-middleware";
 
 const router = Router();
 
-/* ─── GET /api/social/users?userId=... ─────────────────────────────────── */
-router.get("/social/users", async (req, res) => {
-  const { userId } = req.query as { userId?: string };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+/* ─── GET /api/social/users (auth required) ──────────────────────────────── */
+router.get("/social/users", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
 
   const allUsers = await db
     .select({ id: usersTable.id, saharaId: usersTable.saharaId, name: usersTable.name, location: usersTable.location, photoUrl: usersTable.photoUrl })
@@ -48,10 +48,12 @@ router.get("/social/users", async (req, res) => {
   res.json(result);
 });
 
-/* ─── POST /api/social/friend-request ──────────────────────────────────── */
-router.post("/social/friend-request", async (req, res) => {
-  const { fromUserId, toUserId } = req.body as { fromUserId: string; toUserId: string };
-  if (!fromUserId || !toUserId) return res.status(400).json({ error: "Missing fields" });
+/* ─── POST /api/social/friend-request (auth required) ───────────────────── */
+router.post("/social/friend-request", requireAuth, async (req, res) => {
+  const fromUserId = req.authUserId!;
+  const { toUserId } = req.body as { toUserId: string };
+  if (!toUserId) return res.status(400).json({ error: "Missing toUserId" });
+  if (fromUserId === toUserId) return res.status(400).json({ error: "Cannot send request to yourself" });
 
   const existing = await db
     .select()
@@ -70,14 +72,32 @@ router.post("/social/friend-request", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ─── POST /api/social/friend-request/:id/cancel ───────────────────────── */
-router.post("/social/friend-request/:id/cancel", async (req, res) => {
+/* ─── POST /api/social/friend-request/:id/cancel (auth + ownership) ──────── */
+router.post("/social/friend-request/:id/cancel", requireAuth, async (req, res) => {
+  const [fr] = await db
+    .select()
+    .from(friendRequestsTable)
+    .where(eq(friendRequestsTable.id, req.params.id))
+    .limit(1);
+  if (!fr) return res.status(404).json({ error: "Friend request not found" });
+  if (fr.fromUserId !== req.authUserId) {
+    return res.status(403).json({ error: "Not authorized to cancel this request" });
+  }
   await db.delete(friendRequestsTable).where(eq(friendRequestsTable.id, req.params.id));
   res.json({ ok: true });
 });
 
-/* ─── POST /api/social/friend-request/:id/accept ───────────────────────── */
-router.post("/social/friend-request/:id/accept", async (req, res) => {
+/* ─── POST /api/social/friend-request/:id/accept (auth + participant) ────── */
+router.post("/social/friend-request/:id/accept", requireAuth, async (req, res) => {
+  const [fr] = await db
+    .select()
+    .from(friendRequestsTable)
+    .where(eq(friendRequestsTable.id, req.params.id))
+    .limit(1);
+  if (!fr) return res.status(404).json({ error: "Friend request not found" });
+  if (fr.toUserId !== req.authUserId) {
+    return res.status(403).json({ error: "Not authorized to accept this request" });
+  }
   await db
     .update(friendRequestsTable)
     .set({ status: "accepted", updatedAt: new Date() })
@@ -85,8 +105,17 @@ router.post("/social/friend-request/:id/accept", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ─── POST /api/social/friend-request/:id/decline ──────────────────────── */
-router.post("/social/friend-request/:id/decline", async (req, res) => {
+/* ─── POST /api/social/friend-request/:id/decline (auth + participant) ───── */
+router.post("/social/friend-request/:id/decline", requireAuth, async (req, res) => {
+  const [fr] = await db
+    .select()
+    .from(friendRequestsTable)
+    .where(eq(friendRequestsTable.id, req.params.id))
+    .limit(1);
+  if (!fr) return res.status(404).json({ error: "Friend request not found" });
+  if (fr.toUserId !== req.authUserId) {
+    return res.status(403).json({ error: "Not authorized to decline this request" });
+  }
   await db
     .update(friendRequestsTable)
     .set({ status: "declined", updatedAt: new Date() })
@@ -94,10 +123,9 @@ router.post("/social/friend-request/:id/decline", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ─── GET /api/social/friend-requests?userId=... ───────────────────────── */
-router.get("/social/friend-requests", async (req, res) => {
-  const { userId } = req.query as { userId?: string };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+/* ─── GET /api/social/friend-requests (auth required) ───────────────────── */
+router.get("/social/friend-requests", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
 
   const rows = await db
     .select({
@@ -126,10 +154,9 @@ router.get("/social/friend-requests", async (req, res) => {
   );
 });
 
-/* ─── GET /api/social/friends?userId=... ───────────────────────────────── */
-router.get("/social/friends", async (req, res) => {
-  const { userId } = req.query as { userId?: string };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+/* ─── GET /api/social/friends (auth required) ───────────────────────────── */
+router.get("/social/friends", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
 
   const accepted = await db
     .select()
@@ -183,10 +210,11 @@ router.get("/social/friends", async (req, res) => {
   res.json(withExtra);
 });
 
-/* ─── GET /api/social/messages?userId=...&friendId=... ─────────────────── */
-router.get("/social/messages", async (req, res) => {
-  const { userId, friendId } = req.query as { userId?: string; friendId?: string };
-  if (!userId || !friendId) return res.status(400).json({ error: "userId and friendId required" });
+/* ─── GET /api/social/messages (auth required, own conversation only) ────── */
+router.get("/social/messages", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
+  const { friendId } = req.query as { friendId?: string };
+  if (!friendId) return res.status(400).json({ error: "friendId required" });
 
   const msgs = await db
     .select()
@@ -202,14 +230,14 @@ router.get("/social/messages", async (req, res) => {
   res.json(msgs);
 });
 
-/* ─── POST /api/social/messages ────────────────────────────────────────── */
-router.post("/social/messages", async (req, res) => {
-  const { fromUserId, toUserId, content } = req.body as {
-    fromUserId: string;
+/* ─── POST /api/social/messages (auth required) ─────────────────────────── */
+router.post("/social/messages", requireAuth, async (req, res) => {
+  const fromUserId = req.authUserId!;
+  const { toUserId, content } = req.body as {
     toUserId: string;
     content: string;
   };
-  if (!fromUserId || !toUserId || !content?.trim()) {
+  if (!toUserId || !content?.trim()) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
@@ -221,10 +249,9 @@ router.post("/social/messages", async (req, res) => {
   res.json(msg);
 });
 
-/* ─── GET /api/social/conversations?userId=... ─────────────────────────── */
-router.get("/social/conversations", async (req, res) => {
-  const { userId } = req.query as { userId?: string };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+/* ─── GET /api/social/conversations (auth required) ─────────────────────── */
+router.get("/social/conversations", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
 
   const msgs = await db
     .select()
@@ -272,10 +299,11 @@ router.get("/social/conversations", async (req, res) => {
   res.json(result.filter(Boolean));
 });
 
-/* ─── POST /api/social/unfriend ────────────────────────────────────────── */
-router.post("/social/unfriend", async (req, res) => {
-  const { userId, friendId } = req.body as { userId?: string; friendId?: string };
-  if (!userId || !friendId) return res.status(400).json({ error: "Missing fields" });
+/* ─── POST /api/social/unfriend (auth required) ─────────────────────────── */
+router.post("/social/unfriend", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
+  const { friendId } = req.body as { friendId?: string };
+  if (!friendId) return res.status(400).json({ error: "Missing friendId" });
   await db.delete(friendRequestsTable).where(
     or(
       and(eq(friendRequestsTable.fromUserId, userId), eq(friendRequestsTable.toUserId, friendId)),
@@ -285,19 +313,17 @@ router.post("/social/unfriend", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ─── POST /api/social/heartbeat ───────────────────────────────────────── */
-router.post("/social/heartbeat", async (req, res) => {
-  const { userId } = req.body as { userId?: string };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+/* ─── POST /api/social/heartbeat (auth required) ────────────────────────── */
+router.post("/social/heartbeat", requireAuth, async (req, res) => {
   await db
     .update(usersTable)
     .set({ lastSeen: new Date() })
-    .where(eq(usersTable.id, userId));
+    .where(eq(usersTable.id, req.authUserId!));
   res.json({ ok: true });
 });
 
-/* ─── GET /api/social/online-status/:userId ─────────────────────────────── */
-router.get("/social/online-status/:userId", async (req, res) => {
+/* ─── GET /api/social/online-status/:userId (auth required) ─────────────── */
+router.get("/social/online-status/:userId", requireAuth, async (req, res) => {
   const [user] = await db
     .select({ lastSeen: usersTable.lastSeen })
     .from(usersTable)
@@ -309,9 +335,11 @@ router.get("/social/online-status/:userId", async (req, res) => {
   res.json({ isOnline, lastSeen: lastSeen?.toISOString() ?? null });
 });
 
-/* ─── POST /api/social/messages/read ───────────────────────────────────── */
-router.post("/social/messages/read", async (req, res) => {
-  const { userId, friendId } = req.body as { userId: string; friendId: string };
+/* ─── POST /api/social/messages/read (auth required, own messages only) ──── */
+router.post("/social/messages/read", requireAuth, async (req, res) => {
+  const userId = req.authUserId!;
+  const { friendId } = req.body as { friendId: string };
+  if (!friendId) return res.status(400).json({ error: "Missing friendId" });
   await db
     .update(messagesTable)
     .set({ readAt: new Date() })

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db, requestsTable, usersTable, requestLikesTable, requestCommentsTable } from "@workspace/db";
 import { eq, desc, sql, and } from "drizzle-orm";
+import { requireAuth } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -36,7 +37,6 @@ router.get("/home-stats", async (req, res) => {
             location: f.location,
             postedBy: f.isAnonymous ? "Anonymous" : f.postedBy,
             timestamp: new Date(f.createdAt).getTime(),
-            userId: f.isAnonymous ? undefined : (f.userId ?? undefined),
             isAnonymous: f.isAnonymous ?? false,
           }
         : null,
@@ -47,6 +47,7 @@ router.get("/home-stats", async (req, res) => {
   }
 });
 
+/* ─── GET /api/requests (public — PII stripped) ─────────────────────────── */
 router.get("/requests", async (req, res) => {
   try {
     const rows = await db
@@ -61,10 +62,8 @@ router.get("/requests", async (req, res) => {
       description: r.description,
       location: r.location,
       status: r.status,
-      contactPhone: r.isAnonymous ? undefined : (r.contactPhone ?? undefined),
       postedBy: r.isAnonymous ? "Anonymous" : r.postedBy,
       timestamp: new Date(r.createdAt).getTime(),
-      userId: r.isAnonymous ? undefined : (r.userId ?? undefined),
       mediaUrls: r.mediaUrls ?? [],
       isAnonymous: r.isAnonymous ?? false,
     }));
@@ -75,9 +74,40 @@ router.get("/requests", async (req, res) => {
   }
 });
 
-router.post("/requests", async (req, res) => {
+/* ─── GET /api/requests/mine (auth — returns own requests with userId) ───── */
+router.get("/requests/mine", requireAuth, async (req, res) => {
   try {
-    const { category, helpType, title, description, location, contactPhone, postedBy, userId, mediaUrls, isAnonymous } = req.body as {
+    const rows = await db
+      .select()
+      .from(requestsTable)
+      .where(eq(requestsTable.userId, req.authUserId!))
+      .orderBy(desc(requestsTable.createdAt));
+    const mapped = rows.map((r) => ({
+      id: r.id,
+      category: r.category,
+      helpType: r.helpType,
+      title: r.title,
+      description: r.description,
+      location: r.location,
+      status: r.status,
+      contactPhone: r.isAnonymous ? undefined : (r.contactPhone ?? undefined),
+      postedBy: r.isAnonymous ? "Anonymous" : r.postedBy,
+      timestamp: new Date(r.createdAt).getTime(),
+      userId: r.userId ?? undefined,
+      mediaUrls: r.mediaUrls ?? [],
+      isAnonymous: r.isAnonymous ?? false,
+    }));
+    res.json({ requests: mapped });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching own requests");
+    res.status(500).json({ error: "Failed to fetch requests" });
+  }
+});
+
+/* ─── POST /api/requests (auth required) ────────────────────────────────── */
+router.post("/requests", requireAuth, async (req, res) => {
+  try {
+    const { category, helpType, title, description, location, contactPhone, postedBy, mediaUrls, isAnonymous } = req.body as {
       category?: string;
       helpType?: string;
       title?: string;
@@ -85,7 +115,6 @@ router.post("/requests", async (req, res) => {
       location?: string;
       contactPhone?: string;
       postedBy?: string;
-      userId?: string;
       mediaUrls?: string[];
       isAnonymous?: boolean;
     };
@@ -96,6 +125,7 @@ router.post("/requests", async (req, res) => {
     }
 
     const anonymous = isAnonymous === true;
+    const authorId = req.authUserId!;
 
     const [row] = await db
       .insert(requestsTable)
@@ -107,7 +137,7 @@ router.post("/requests", async (req, res) => {
         location,
         contactPhone: anonymous ? null : (contactPhone || null),
         postedBy,
-        userId: userId || null,
+        userId: authorId,
         status: "active",
         mediaUrls: mediaUrls ?? [],
         isAnonymous: anonymous,
@@ -123,12 +153,11 @@ router.post("/requests", async (req, res) => {
         description: row.description,
         location: row.location,
         status: row.status,
-        contactPhone: anonymous ? undefined : (row.contactPhone ?? undefined),
         postedBy: anonymous ? "Anonymous" : row.postedBy,
         timestamp: new Date(row.createdAt).getTime(),
-        userId: anonymous ? undefined : (row.userId ?? undefined),
         mediaUrls: row.mediaUrls ?? [],
         isAnonymous: anonymous,
+        userId: authorId,
       },
     });
   } catch (err) {
@@ -137,7 +166,8 @@ router.post("/requests", async (req, res) => {
   }
 });
 
-router.patch("/requests/:id", async (req, res) => {
+/* ─── PATCH /api/requests/:id (auth + ownership) ────────────────────────── */
+router.patch("/requests/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body as { status?: string };
@@ -147,17 +177,23 @@ router.patch("/requests/:id", async (req, res) => {
       return;
     }
 
-    const [row] = await db
-      .update(requestsTable)
-      .set({ status })
+    const [existing] = await db
+      .select({ userId: requestsTable.userId })
+      .from(requestsTable)
       .where(eq(requestsTable.id, id))
-      .returning();
+      .limit(1);
 
-    if (!row) {
+    if (!existing) {
       res.status(404).json({ error: "Request not found" });
       return;
     }
 
+    if (existing.userId !== req.authUserId && !req.authUser?.isAdmin) {
+      res.status(403).json({ error: "Not authorized to modify this request" });
+      return;
+    }
+
+    await db.update(requestsTable).set({ status }).where(eq(requestsTable.id, id));
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Error updating request");
@@ -165,9 +201,27 @@ router.patch("/requests/:id", async (req, res) => {
   }
 });
 
-router.delete("/requests/:id", async (req, res) => {
+/* ─── DELETE /api/requests/:id (auth + ownership) ───────────────────────── */
+router.delete("/requests/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+
+    const [existing] = await db
+      .select({ userId: requestsTable.userId })
+      .from(requestsTable)
+      .where(eq(requestsTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: "Request not found" });
+      return;
+    }
+
+    if (existing.userId !== req.authUserId && !req.authUser?.isAdmin) {
+      res.status(403).json({ error: "Not authorized to delete this request" });
+      return;
+    }
+
     await db.delete(requestsTable).where(eq(requestsTable.id, id));
     res.json({ ok: true });
   } catch (err) {
@@ -176,33 +230,55 @@ router.delete("/requests/:id", async (req, res) => {
   }
 });
 
-/* ─── GET /api/requests/:id/reactions?userId=... ───────────────────────── */
+/* ─── GET /api/requests/:id/reactions ───────────────────────────────────── */
 router.get("/requests/:id/reactions", async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.query as { userId?: string };
-    const [[{ likesCount }], comments] = await Promise.all([
+    const callerToken = req.headers["x-sahara-token"] as string | undefined;
+
+    const [[{ likesCount }], rawComments] = await Promise.all([
       db.select({ likesCount: sql<number>`count(*)` }).from(requestLikesTable).where(eq(requestLikesTable.requestId, id)),
       db.select().from(requestCommentsTable).where(eq(requestCommentsTable.requestId, id)).orderBy(desc(requestCommentsTable.createdAt)),
     ]);
+
+    let callerUserId: string | null = null;
+    if (callerToken) {
+      const [u] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.apiToken, callerToken))
+        .limit(1);
+      callerUserId = u?.id ?? null;
+    }
+
     let liked = false;
-    if (userId) {
-      const [existing] = await db.select().from(requestLikesTable).where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, userId))).limit(1);
+    if (callerUserId) {
+      const [existing] = await db
+        .select()
+        .from(requestLikesTable)
+        .where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, callerUserId)))
+        .limit(1);
       liked = !!existing;
     }
+
+    const comments = rawComments.map(({ userId: _uid, ...c }) => c);
+
     res.json({ likesCount: Number(likesCount), liked, commentsCount: comments.length, comments });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch reactions" });
   }
 });
 
-/* ─── POST /api/requests/:id/like ──────────────────────────────────────── */
-router.post("/requests/:id/like", async (req, res) => {
+/* ─── POST /api/requests/:id/like (auth required) ───────────────────────── */
+router.post("/requests/:id/like", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId } = req.body as { userId?: string };
-    if (!userId) return res.status(400).json({ error: "userId required" });
-    const [existing] = await db.select().from(requestLikesTable).where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, userId))).limit(1);
+    const userId = req.authUserId!;
+    const [existing] = await db
+      .select()
+      .from(requestLikesTable)
+      .where(and(eq(requestLikesTable.requestId, id), eq(requestLikesTable.userId, userId)))
+      .limit(1);
     if (existing) {
       await db.delete(requestLikesTable).where(eq(requestLikesTable.id, existing.id));
       res.json({ liked: false });
@@ -210,26 +286,30 @@ router.post("/requests/:id/like", async (req, res) => {
       await db.insert(requestLikesTable).values({ requestId: id, userId });
       res.json({ liked: true });
     }
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to toggle like" });
   }
 });
 
-/* ─── POST /api/requests/:id/comment ───────────────────────────────────── */
-router.post("/requests/:id/comment", async (req, res) => {
+/* ─── POST /api/requests/:id/comment (auth required) ────────────────────── */
+router.post("/requests/:id/comment", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, userName, content, isAnonymous } = req.body as { userId?: string; userName?: string; content?: string; isAnonymous?: boolean };
+    const { userName, content, isAnonymous } = req.body as { userName?: string; content?: string; isAnonymous?: boolean };
     if (!userName || !content) return res.status(400).json({ error: "userName and content required" });
-    const [comment] = await db.insert(requestCommentsTable).values({
-      requestId: id,
-      userId: userId || null,
-      userName: isAnonymous ? "Anonymous" : userName,
-      content,
-      isAnonymous: isAnonymous ?? false,
-    }).returning();
-    res.json(comment);
-  } catch (err) {
+    const [comment] = await db
+      .insert(requestCommentsTable)
+      .values({
+        requestId: id,
+        userId: req.authUserId!,
+        userName: isAnonymous ? "Anonymous" : userName,
+        content,
+        isAnonymous: isAnonymous ?? false,
+      })
+      .returning();
+    const { userId: _uid, ...safeComment } = comment;
+    res.json(safeComment);
+  } catch {
     res.status(500).json({ error: "Failed to add comment" });
   }
 });

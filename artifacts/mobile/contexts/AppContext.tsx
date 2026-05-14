@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { setApiToken as setSocialApiToken } from "@/lib/social";
 import React, {
   createContext,
   useCallback,
@@ -62,6 +63,7 @@ interface AppContextType {
   updateProfile: (updates: Partial<UserProfile>) => void;
   setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => void;
   setBanInfo: (info: BanInfo | null) => void;
+  storeApiToken: (token: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
   refreshRequests: () => Promise<void>;
@@ -69,6 +71,7 @@ interface AppContextType {
 
 const PROFILE_KEY = "@sahara/profile_v2";
 const BAN_KEY = "@sahara/ban_info_v1";
+const TOKEN_KEY = "@sahara/api_token_v1";
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -96,6 +99,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const initialized = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const apiTokenRef = useRef<string>("");
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -205,6 +209,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      const tokenStr = await AsyncStorage.getItem(TOKEN_KEY);
+      if (tokenStr) {
+        apiTokenRef.current = tokenStr;
+        setSocialApiToken(tokenStr);
+      }
+
       const profileStr = await AsyncStorage.getItem(PROFILE_KEY);
       if (profileStr) {
         const cached = JSON.parse(profileStr) as UserProfile;
@@ -281,12 +291,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const storeApiToken = useCallback(async (token: string) => {
+    apiTokenRef.current = token;
+    setSocialApiToken(token);
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+  }, []);
+
   const addRequest = useCallback(
     async (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => {
       try {
         const res = await fetch(`${API_BASE}/api/requests`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(apiTokenRef.current ? { "x-sahara-token": apiTokenRef.current } : {}),
+          },
           body: JSON.stringify({
             ...data,
             userId: data.isAnonymous ? undefined : (profile.id || undefined),
@@ -309,7 +328,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (id: string) => {
       void fetch(`${API_BASE}/api/requests/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiTokenRef.current ? { "x-sahara-token": apiTokenRef.current } : {}),
+        },
         body: JSON.stringify({ status: "resolved" }),
       });
       setRequests((prev) =>
@@ -326,7 +348,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (id: string, status: RequestStatus) => {
       void fetch(`${API_BASE}/api/requests/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiTokenRef.current ? { "x-sahara-token": apiTokenRef.current } : {}),
+        },
         body: JSON.stringify({ status }),
       });
       setRequests((prev) =>
@@ -338,7 +363,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const deleteRequest = useCallback(
     (id: string) => {
-      void fetch(`${API_BASE}/api/requests/${id}`, { method: "DELETE" });
+      void fetch(`${API_BASE}/api/requests/${id}`, {
+        method: "DELETE",
+        headers: apiTokenRef.current ? { "x-sahara-token": apiTokenRef.current } : {},
+      });
       setRequests((prev) => prev.filter((r) => r.id !== id));
     },
     []
@@ -380,6 +408,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     stopPolling();
     setProfile(DEFAULT_PROFILE);
     void saveProfile(DEFAULT_PROFILE);
+    apiTokenRef.current = "";
+    setSocialApiToken(null);
+    void AsyncStorage.removeItem(TOKEN_KEY);
     // Don't clear banInfo on logout — keep it so ban screen shows
   }, [saveProfile, stopPolling]);
 
@@ -396,6 +427,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
         setAuthedProfile,
         setBanInfo,
+        storeApiToken,
         logout,
         loading,
         refreshRequests: fetchRequests,

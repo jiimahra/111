@@ -70,10 +70,10 @@ export const authApi = {
     phone?: string;
     location?: string;
   }) {
-    return postJson<{ user: AuthUser }>("/auth/signup", input);
+    return postJson<{ user: AuthUser; apiToken?: string }>("/auth/signup", input);
   },
   login(input: { email: string; password: string }) {
-    return postJson<{ user: AuthUser }>("/auth/login", input);
+    return postJson<{ user: AuthUser; apiToken?: string }>("/auth/login", input);
   },
   googleLogin(accessToken: string) {
     return postJson<{ user: AuthUser }>("/auth/google", { accessToken });
@@ -85,7 +85,7 @@ export const authApi = {
     return postJson<{ ok: true; message: string }>("/auth/forgot-password", { email });
   },
   resetPassword(input: { email: string; code: string; newPassword: string }) {
-    return postJson<{ user: AuthUser }>("/auth/reset-password", input);
+    return postJson<{ user: AuthUser; apiToken?: string }>("/auth/reset-password", input);
   },
   updatePhoto(input: { userId: string; photoUrl: string }) {
     return patchJson<{ ok: true }>("/auth/photo", input);
