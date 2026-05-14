@@ -1,10 +1,10 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, usersTable } from "@workspace/db";
 import { sendResetEmail } from "../lib/mailer";
-import { generateApiToken } from "../lib/auth-middleware";
+import { issueUserToken, verifyUserToken } from "../lib/tokens";
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? "";
@@ -18,9 +18,40 @@ setInterval(() => {
   }
 }, 60_000);
 
+// Per-account reset attempt tracking (cleared when code expires or is consumed)
+const resetAttempts = new Map<string, { count: number; resetAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of resetAttempts.entries()) {
+    if (v.resetAt < now) resetAttempts.delete(k);
+  }
+}, 5 * 60_000);
+
+const MAX_RESET_ATTEMPTS = 5;
+
 function getAppBaseUrl(): string {
   const domains = (process.env.REPLIT_DOMAINS ?? "").split(",").filter(Boolean);
   return domains.length > 0 ? `https://${domains[0]}` : "https://saharaapphelp.com";
+}
+
+function getAllowedRedirectOrigins(): Set<string> {
+  const domains = (process.env.REPLIT_DOMAINS ?? "").split(",").filter(Boolean);
+  const origins = new Set<string>(["https://saharaapphelp.com"]);
+  for (const d of domains) {
+    origins.add(`https://${d.trim()}`);
+  }
+  return origins;
+}
+
+function isAllowedRedirectBase(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const origin = parsed.origin;
+    return getAllowedRedirectOrigins().has(origin);
+  } catch {
+    return false;
+  }
 }
 
 const GoogleBody = z.object({
@@ -89,6 +120,12 @@ function publicUser(u: {
   };
 }
 
+function extractBearerUserId(req: Request): string | null {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) return null;
+  return verifyUserToken(auth.slice(7));
+}
+
 router.post("/auth/signup", async (req, res) => {
   const parsed = SignupBody.safeParse(req.body);
   if (!parsed.success) {
@@ -98,7 +135,8 @@ router.post("/auth/signup", async (req, res) => {
 
   const existing = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (existing.length > 0) {
-    return res.status(409).json({ error: "Account with this email already exists. Please login." });
+    // Return generic error to avoid account-existence enumeration
+    return res.status(409).json({ error: "Unable to create account. Please try logging in with this email." });
   }
 
   const saharaId = await generateUniqueSaharaId();
@@ -109,9 +147,8 @@ router.post("/auth/signup", async (req, res) => {
     .values({ saharaId, email, passwordHash, name, phone: phone ?? null, location: location ?? null, isAdmin })
     .returning();
 
-  const signupToken = generateApiToken();
-  await db.update(usersTable).set({ apiToken: signupToken }).where(eq(usersTable.id, user.id));
-  return res.json({ user: publicUser(user), apiToken: signupToken });
+  const apiToken = issueUserToken(user.id);
+  return res.json({ user: publicUser(user), apiToken });
 });
 
 router.post("/auth/login", async (req, res) => {
@@ -123,12 +160,13 @@ router.post("/auth/login", async (req, res) => {
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user) {
-    return res.status(401).json({ error: "No account found with this email. Please sign up first." });
+    // Return generic message to avoid account-existence enumeration
+    return res.status(401).json({ error: "Invalid email or password. Please try again." });
   }
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) {
-    return res.status(401).json({ error: "Wrong password. Try again or use Forgot Password." });
+    return res.status(401).json({ error: "Invalid email or password. Please try again." });
   }
 
   if (user.blockedUntil) {
@@ -148,18 +186,21 @@ router.post("/auth/login", async (req, res) => {
     await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, user.id));
   }
 
-  const loginToken = generateApiToken();
-  await db.update(usersTable).set({ apiToken: loginToken }).where(eq(usersTable.id, user.id));
-  return res.json({ user: publicUser(user), apiToken: loginToken });
+  const apiToken = issueUserToken(user.id);
+  return res.json({ user: publicUser(user), apiToken });
 });
 
 // ─── Backend Google OAuth flow ───────────────────────────────────────────────
 
 router.get("/auth/google/start", (req, res) => {
   const mode = req.query.mode === "signup" ? "signup" : "login";
-  const redirectBack = (req.query.redirect_back as string) || "";
+  const rawRedirectBack = (req.query.redirect_back as string) || "";
   const appBase = getAppBaseUrl();
   const redirectUri = `${appBase}/api/auth/google/callback`;
+
+  // Only allow redirect_back to first-party origins
+  const redirectBack = isAllowedRedirectBase(rawRedirectBack) ? rawRedirectBack : appBase;
+
   const stateData = Buffer.from(JSON.stringify({ mode, redirectBack })).toString("base64");
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
@@ -184,7 +225,10 @@ router.get("/auth/google/callback", async (req, res) => {
   try {
     const decoded = JSON.parse(Buffer.from(rawState, "base64").toString());
     mode = decoded.mode === "signup" ? "signup" : "login";
-    if (decoded.redirectBack) finalBase = decoded.redirectBack;
+    // Re-validate the redirectBack from state (defence-in-depth)
+    if (decoded.redirectBack && isAllowedRedirectBase(decoded.redirectBack)) {
+      finalBase = decoded.redirectBack;
+    }
   } catch {
     mode = rawState === "signup" ? "signup" : "login";
   }
@@ -242,11 +286,11 @@ router.get("/auth/google/callback", async (req, res) => {
       return res.redirect(`${finalBase}?${params.toString()}`);
     }
 
-    const gApiToken = generateApiToken();
-    await db.update(usersTable).set({ apiToken: gApiToken }).where(eq(usersTable.id, user.id));
-    const token = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-    pendingGoogleTokens.set(token, { user: publicUser(user), apiToken: gApiToken, expires: Date.now() + 5 * 60 * 1000 });
-    return res.redirect(`${finalBase}?g_token=${token}`);
+    // Issue a signed token (no DB write needed)
+    const signedApiToken = issueUserToken(user.id);
+    const onetimeKey = Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+    pendingGoogleTokens.set(onetimeKey, { user: publicUser(user), apiToken: signedApiToken, expires: Date.now() + 5 * 60 * 1000 });
+    return res.redirect(`${finalBase}?g_token=${onetimeKey}`);
   } catch (err) {
     req.log.error({ err }, "Google OAuth callback error");
     return res.redirect(`${finalBase}?g_error=server_error`);
@@ -296,7 +340,8 @@ router.post("/auth/google", async (req, res) => {
     });
   }
 
-  return res.json({ user: publicUser(existing) });
+  const apiToken = issueUserToken(existing.id);
+  return res.json({ user: publicUser(existing), apiToken });
 });
 
 router.post("/auth/google-signup", async (req, res) => {
@@ -323,7 +368,8 @@ router.post("/auth/google-signup", async (req, res) => {
         blockReason: existing.blockReason ?? null,
       });
     }
-    return res.json({ user: publicUser(existing) });
+    const apiToken = issueUserToken(existing.id);
+    return res.json({ user: publicUser(existing), apiToken });
   }
 
   const saharaId = await generateUniqueSaharaId();
@@ -333,7 +379,8 @@ router.post("/auth/google-signup", async (req, res) => {
     .insert(usersTable)
     .values({ saharaId, email, passwordHash, name: googleUser.name, phone: null, location: null })
     .returning();
-  return res.json({ user: publicUser(user) });
+  const apiToken = issueUserToken(user.id);
+  return res.json({ user: publicUser(user), apiToken });
 });
 
 router.post("/auth/forgot-password", async (req, res) => {
@@ -344,8 +391,9 @@ router.post("/auth/forgot-password", async (req, res) => {
   const { email } = parsed.data;
 
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+  // Return a generic success to avoid revealing account existence
   if (!user) {
-    return res.status(404).json({ error: "No account found with this email." });
+    return res.json({ ok: true, message: "Reset code sent to your email." });
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
@@ -355,6 +403,9 @@ router.post("/auth/forgot-password", async (req, res) => {
     .update(usersTable)
     .set({ resetCode: code, resetCodeExpiresAt: expires })
     .where(eq(usersTable.id, user.id));
+
+  // Reset attempt counter when a new code is issued
+  resetAttempts.delete(email);
 
   try {
     await sendResetEmail({ to: email, name: user.name, code });
@@ -373,36 +424,61 @@ router.post("/auth/reset-password", async (req, res) => {
   }
   const { email, code, newPassword } = parsed.data;
 
+  // Check attempt counter before hitting the DB
+  const attempts = resetAttempts.get(email);
+  if (attempts && attempts.count >= MAX_RESET_ATTEMPTS) {
+    return res.status(429).json({ error: "Too many attempts. Please request a new reset code." });
+  }
+
   const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
   if (!user || !user.resetCode || !user.resetCodeExpiresAt) {
     return res.status(400).json({ error: "No active reset request. Please use Forgot Password again." });
   }
-  if (user.resetCode !== code) {
-    return res.status(400).json({ error: "Wrong reset code." });
-  }
   if (user.resetCodeExpiresAt.getTime() < Date.now()) {
+    resetAttempts.delete(email);
     return res.status(400).json({ error: "Reset code expired. Please request a new one." });
   }
+  if (user.resetCode !== code) {
+    // Increment attempt counter
+    const current = resetAttempts.get(email) ?? { count: 0, resetAt: user.resetCodeExpiresAt.getTime() };
+    current.count += 1;
+    resetAttempts.set(email, current);
 
+    if (current.count >= MAX_RESET_ATTEMPTS) {
+      // Invalidate the code to force the user to request a new one
+      await db
+        .update(usersTable)
+        .set({ resetCode: null, resetCodeExpiresAt: null })
+        .where(eq(usersTable.id, user.id));
+      return res.status(429).json({ error: "Too many wrong attempts. Please request a new reset code." });
+    }
+
+    return res.status(400).json({ error: "Wrong reset code." });
+  }
+
+  // Correct code — clear attempts and apply new password
+  resetAttempts.delete(email);
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  const resetTok = generateApiToken();
   await db
     .update(usersTable)
-    .set({ passwordHash, resetCode: null, resetCodeExpiresAt: null, apiToken: resetTok })
+    .set({ passwordHash, resetCode: null, resetCodeExpiresAt: null })
     .where(eq(usersTable.id, user.id));
 
-  return res.json({ user: publicUser(user), apiToken: resetTok });
+  const apiToken = issueUserToken(user.id);
+  return res.json({ user: publicUser(user), apiToken });
 });
 
 /* ─── DELETE /api/auth/account ─────────────────────────────────────────────── */
 router.delete("/auth/account", async (req, res) => {
-  const { userId, type } = req.body as { userId?: string; type?: "temporary" | "permanent" };
-  if (!userId) return res.status(400).json({ error: "userId required" });
+  const callerUserId = extractBearerUserId(req);
+  if (!callerUserId) return res.status(401).json({ error: "Authentication required" });
+
+  const { type } = req.body as { type?: "temporary" | "permanent" };
   try {
     if (type === "permanent") {
-      await db.delete(usersTable).where(eq(usersTable.id, userId));
+      await db.delete(usersTable).where(eq(usersTable.id, callerUserId));
     } else {
-      await db.update(usersTable).set({ isHidden: true }).where(eq(usersTable.id, userId));
+      await db.update(usersTable).set({ isHidden: true }).where(eq(usersTable.id, callerUserId));
     }
     res.json({ ok: true });
   } catch (err) {
@@ -412,17 +488,21 @@ router.delete("/auth/account", async (req, res) => {
 });
 
 router.patch("/auth/photo", async (req, res) => {
-  const { userId, photoUrl } = req.body as { userId?: string; photoUrl?: string };
-  if (!userId || !photoUrl) return res.status(400).json({ error: "Missing fields" });
-  await db.update(usersTable).set({ photoUrl }).where(eq(usersTable.id, userId));
+  const callerUserId = extractBearerUserId(req);
+  if (!callerUserId) return res.status(401).json({ error: "Authentication required" });
+
+  const { photoUrl } = req.body as { photoUrl?: string };
+  if (!photoUrl) return res.status(400).json({ error: "Missing photoUrl" });
+  await db.update(usersTable).set({ photoUrl }).where(eq(usersTable.id, callerUserId));
   res.json({ ok: true });
 });
 
 router.get("/auth/me", async (req, res) => {
-  const userId = req.query.userId as string | undefined;
-  if (!userId) return res.status(400).json({ error: "Missing userId" });
+  const callerUserId = extractBearerUserId(req);
+  if (!callerUserId) return res.status(401).json({ error: "Authentication required" });
+
   try {
-    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, callerUserId)).limit(1);
     if (!user) return res.status(404).json({ error: "User not found" });
     if (user.blockedUntil) {
       const isPermanent = user.blockedUntil.getFullYear() >= 9999;
@@ -436,7 +516,7 @@ router.get("/auth/me", async (req, res) => {
       });
     }
     if (user.isHidden) {
-      await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, userId));
+      await db.update(usersTable).set({ isHidden: false }).where(eq(usersTable.id, callerUserId));
     }
     return res.json({ user: publicUser(user) });
   } catch {

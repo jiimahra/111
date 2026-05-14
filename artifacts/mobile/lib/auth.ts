@@ -14,10 +14,12 @@ export interface AuthUser {
   photoUrl?: string | null;
 }
 
-async function patchJson<T>(path: string, body: unknown): Promise<T> {
+async function patchJson<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${API_BASE}/api${path}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
   let data: any = null;
@@ -76,10 +78,10 @@ export const authApi = {
     return postJson<{ user: AuthUser; apiToken?: string }>("/auth/login", input);
   },
   googleLogin(accessToken: string) {
-    return postJson<{ user: AuthUser }>("/auth/google", { accessToken });
+    return postJson<{ user: AuthUser; apiToken?: string }>("/auth/google", { accessToken });
   },
   googleSignup(accessToken: string) {
-    return postJson<{ user: AuthUser }>("/auth/google-signup", { accessToken });
+    return postJson<{ user: AuthUser; apiToken?: string }>("/auth/google-signup", { accessToken });
   },
   forgotPassword(email: string) {
     return postJson<{ ok: true; message: string }>("/auth/forgot-password", { email });
@@ -87,7 +89,7 @@ export const authApi = {
   resetPassword(input: { email: string; code: string; newPassword: string }) {
     return postJson<{ user: AuthUser; apiToken?: string }>("/auth/reset-password", input);
   },
-  updatePhoto(input: { userId: string; photoUrl: string }) {
-    return patchJson<{ ok: true }>("/auth/photo", input);
+  updatePhoto(input: { photoUrl: string }, token: string) {
+    return patchJson<{ ok: true }>("/auth/photo", { photoUrl: input.photoUrl }, token);
   },
 };

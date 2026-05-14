@@ -345,7 +345,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
         Alert.alert("Login विफल", data?.error ?? `Server error (${res.status})`);
         return;
       }
-      setAuthedProfile(data.user);
+      setAuthedProfile(data.user, data.apiToken);
       if (data.apiToken) await storeApiToken(data.apiToken);
     } catch (e: any) {
       Alert.alert("Network Error", e?.message ?? "Internet connection check karein.");
@@ -394,7 +394,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
         phone: signupPhone.trim() || undefined,
         location: signupLocation.trim() || undefined,
       });
-      setAuthedProfile(result.user);
+      setAuthedProfile(result.user, result.apiToken);
       if (result.apiToken) await storeApiToken(result.apiToken);
     } catch (err: any) {
       Alert.alert("Signup Failed", err.message ?? "Account nahi ban paya.");
@@ -420,7 +420,7 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
     setLoading(true);
     try {
       const resetResult = await authApi.resetPassword({ email: forgotEmail.trim(), code: resetCode.trim(), newPassword: resetNewPw });
-      setAuthedProfile(resetResult.user);
+      setAuthedProfile(resetResult.user, resetResult.apiToken);
       if (resetResult.apiToken) await storeApiToken(resetResult.apiToken);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "Password reset nahi hua.");
@@ -644,7 +644,7 @@ function EditModal({
 
 // ─── Main Profile Screen ─────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const { profile, requests, updateProfile, updateRequestStatus, deleteRequest, logout, banInfo, setBanInfo } = useApp();
+  const { profile, requests, authToken, updateProfile, updateRequestStatus, deleteRequest, logout, banInfo, setBanInfo } = useApp();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = insets.top;
@@ -734,7 +734,7 @@ export default function ProfileScreen() {
 
       if (!photoUrl) throw new Error("Server ne URL nahi diya");
 
-      await authApi.updatePhoto({ userId: profile.id, photoUrl });
+      await authApi.updatePhoto({ photoUrl }, authToken);
       updateProfile({ photoUri: photoUrl, photoUrl });
       setPhotoUri(photoUrl);
       Alert.alert("✅ Saved!", "Profile photo update ho gayi.");
@@ -761,8 +761,8 @@ export default function ProfileScreen() {
         (process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : "");
       const res = await fetch(`${API_BASE_URL}/api/auth/account`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: profile.id, type }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ type }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));

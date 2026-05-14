@@ -121,7 +121,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         }
         throw new Error(data.error ?? "Login failed");
       }
-      setAuthedProfile(data.user);
+      setAuthedProfile(data.user, data.token);
     } catch (e: any) {
       showError(e.message || "Login failed");
     } finally {
@@ -134,8 +134,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (password.length < 6) return showError("Password must be at least 6 characters.");
     setBusy(true);
     try {
-      const { user } = await authApi.signup({ email, password, name, phone, location });
-      setAuthedProfile(user);
+      const { user, token } = await authApi.signup({ email, password, name, phone, location });
+      setAuthedProfile(user, token);
     } catch (e: any) {
       showError(e.message || "Signup failed");
     } finally {
@@ -163,8 +163,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
     setBusy(true);
     try {
-      const { user } = await authApi.resetPassword({ email, code, newPassword });
-      setAuthedProfile(user);
+      const { user, token } = await authApi.resetPassword({ email, code, newPassword });
+      setAuthedProfile(user, token);
     } catch (e: any) {
       showError(e.message || "Reset failed");
     } finally {
@@ -189,7 +189,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         }
         throw new Error(data.error ?? "Login failed");
       }
-      setAuthedProfile(data.user);
+      setAuthedProfile(data.user, data.token);
     } catch (e: any) {
       Alert.alert("Error", e.message || "Guest login failed");
     } finally {

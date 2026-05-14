@@ -56,12 +56,16 @@ interface AppContextType {
   requests: HelpRequest[];
   profile: UserProfile;
   banInfo: BanInfo | null;
+  authToken: string;
   addRequest: (data: Omit<HelpRequest, "id" | "timestamp" | "status">) => Promise<void>;
   resolveRequest: (id: string) => void;
   updateRequestStatus: (id: string, status: RequestStatus) => void;
   deleteRequest: (id: string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
-  setAuthedProfile: (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => void;
+  setAuthedProfile: (
+    user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null },
+    token?: string,
+  ) => void;
   setBanInfo: (info: BanInfo | null) => void;
   storeApiToken: (token: string) => Promise<void>;
   apiToken: string;
@@ -72,6 +76,7 @@ interface AppContextType {
 
 const PROFILE_KEY = "@sahara/profile_v2";
 const BAN_KEY = "@sahara/ban_info_v1";
+// Unified key — signed HMAC tokens are stored here (compatible with @sahara/api_token_v1 readers)
 const TOKEN_KEY = "@sahara/api_token_v1";
 
 const API_BASE =
@@ -98,10 +103,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [banInfo, setBanInfoState] = useState<BanInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [apiToken, setApiTokenState] = useState<string>("");
+  const [authToken, setAuthTokenState] = useState<string>("");
+  // Single token ref used for both x-sahara-token (requests/social) and Authorization Bearer (auth endpoints)
+  const apiTokenRef = useRef<string>("");
+  const authTokenRef = useRef<string>("");
   const initialized = useRef(false);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const apiTokenRef = useRef<string>("");
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -114,9 +121,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Block status poll ───────────────────────────────────────────────────────
-  const checkBlockStatus = useCallback(async (userId: string, userName: string, userEmail: string) => {
+  const checkBlockStatus = useCallback(async (userName: string, userEmail: string) => {
+    const token = authTokenRef.current;
+    if (!token) return; // No valid session token — skip polling
     try {
-      const res = await fetch(`${API_BASE}/api/auth/me?userId=${userId}`);
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 403) {
         const data = await res.json() as {
           error: string;
@@ -160,11 +171,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Start/stop polling based on login state
-  const startPolling = useCallback((userId: string, userName: string, userEmail: string) => {
+  const startPolling = useCallback((userName: string, userEmail: string) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    // Poll every 60 seconds
+    // Poll every 60 seconds — reads authTokenRef.current at each tick
     pollIntervalRef.current = setInterval(() => {
-      void checkBlockStatus(userId, userName, userEmail);
+      void checkBlockStatus(userName, userEmail);
     }, 60_000);
   }, [checkBlockStatus]);
 
@@ -185,7 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Start/stop polling when profile.id changes
   useEffect(() => {
     if (profile.id) {
-      startPolling(profile.id, profile.name, profile.email);
+      startPolling(profile.name, profile.email);
     } else {
       stopPolling();
     }
@@ -197,13 +208,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const banStr = await AsyncStorage.getItem(BAN_KEY);
       if (banStr) {
         const saved = JSON.parse(banStr) as BanInfo;
-        // Check if ban has expired
         if (!saved.isPermanent && saved.blockedUntil) {
           const expiry = new Date(saved.blockedUntil);
           if (expiry > new Date()) {
             setBanInfoState(saved);
           } else {
-            // Ban expired — clear it
             void AsyncStorage.removeItem(BAN_KEY);
           }
         } else if (saved.isPermanent) {
@@ -211,20 +220,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Load token — update both refs and social API
       const tokenStr = await AsyncStorage.getItem(TOKEN_KEY);
-      if (tokenStr) {
-        apiTokenRef.current = tokenStr;
-        setApiTokenState(tokenStr);
-        setSocialApiToken(tokenStr);
-      }
+      const storedToken = tokenStr ?? "";
+      apiTokenRef.current = storedToken;
+      authTokenRef.current = storedToken;
+      if (storedToken) setSocialApiToken(storedToken);
+      setAuthTokenState(storedToken);
 
       const profileStr = await AsyncStorage.getItem(PROFILE_KEY);
       if (profileStr) {
         const cached = JSON.parse(profileStr) as UserProfile;
         setProfile(cached);
-        if (cached.id) {
+        if (cached.id && storedToken) {
           try {
-            const res = await fetch(`${API_BASE}/api/auth/me?userId=${cached.id}`);
+            const res = await fetch(`${API_BASE}/api/auth/me`, {
+              headers: { Authorization: `Bearer ${storedToken}` },
+            });
             if (res.ok) {
               const { user } = await res.json() as { user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null } };
               const refreshed: UserProfile = {
@@ -239,7 +251,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               setProfile(refreshed);
               void AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(refreshed));
             } else if (res.status === 403) {
-              // Blocked while loading — treat like block poll
               const data = await res.json() as { error: string; blockedUntil?: string | null; isPermanent?: boolean; blockReason?: string | null; saharaId?: string; userName?: string };
               if (data.error === "account_blocked") {
                 const ban: BanInfo = {
@@ -269,6 +280,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } catch { /**/ }
               }
             }
+            // If 401: token expired/invalid — user stays logged in locally
+            // but won't be able to use authenticated endpoints until re-login
           } catch {
           }
         }
@@ -296,8 +309,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const storeApiToken = useCallback(async (token: string) => {
     apiTokenRef.current = token;
-    setApiTokenState(token);
+    authTokenRef.current = token;
     setSocialApiToken(token);
+    setAuthTokenState(token);
     await AsyncStorage.setItem(TOKEN_KEY, token);
   }, []);
 
@@ -386,7 +400,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const setAuthedProfile = useCallback(
-    (user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null }) => {
+    (
+      user: { id: string; saharaId: string; name: string; email: string; phone: string; location: string; photoUrl?: string | null },
+      token?: string,
+    ) => {
       const newProfile: UserProfile = {
         id: user.id,
         saharaId: user.saharaId,
@@ -404,6 +421,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Clear any old ban info on successful login
       setBanInfoState(null);
       void AsyncStorage.removeItem(BAN_KEY);
+      // Save auth token if provided — update both refs and social API
+      if (token) {
+        apiTokenRef.current = token;
+        authTokenRef.current = token;
+        setSocialApiToken(token);
+        setAuthTokenState(token);
+        void AsyncStorage.setItem(TOKEN_KEY, token);
+      }
     },
     [profile.helpedCount, profile.requestsPosted, saveProfile]
   );
@@ -413,8 +438,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProfile(DEFAULT_PROFILE);
     void saveProfile(DEFAULT_PROFILE);
     apiTokenRef.current = "";
-    setApiTokenState("");
+    authTokenRef.current = "";
     setSocialApiToken(null);
+    setAuthTokenState("");
     void AsyncStorage.removeItem(TOKEN_KEY);
     // Don't clear banInfo on logout — keep it so ban screen shows
   }, [saveProfile, stopPolling]);
@@ -425,6 +451,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         requests,
         profile,
         banInfo,
+        authToken,
         addRequest,
         resolveRequest,
         updateRequestStatus,
@@ -433,7 +460,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setAuthedProfile,
         setBanInfo,
         storeApiToken,
-        apiToken,
         logout,
         loading,
         refreshRequests: fetchRequests,

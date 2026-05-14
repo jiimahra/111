@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   useCallback,
@@ -36,6 +37,8 @@ const API_BASE =
   (process.env.EXPO_PUBLIC_DOMAIN
     ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
     : "");
+
+const TOKEN_KEY = "@sahara/auth_token_v1";
 
 export interface IncomingCall {
   from: string;
@@ -249,7 +252,12 @@ export function CallProvider({ children }: { children: React.ReactNode }) {
     myIdRef.current = userId;
     myNameRef.current = userName;
     if (socketRef.current && userId) {
-      socketRef.current.emit("join-room", userId);
+      // Read the auth token from storage and pass it with the join-room event
+      void AsyncStorage.getItem(TOKEN_KEY).then((token) => {
+        socketRef.current?.emit("join-room", userId, token ?? "");
+      }).catch(() => {
+        socketRef.current?.emit("join-room", userId, "");
+      });
     }
   }, []);
 

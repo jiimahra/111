@@ -1,17 +1,28 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, usersTable, requestsTable } from "@workspace/db";
 import { eq, desc, count, gte } from "drizzle-orm";
 import { sendAdminOtpEmail } from "../lib/mailer";
+import { issueAdminToken, verifyAdminToken } from "../lib/tokens";
 
 const router: IRouter = Router();
 
 const ADMIN_EMAIL = "saharaapphelp@gmail.com";
 
-const adminOtpStore = new Map<string, { code: string; expiresAt: number }>();
+interface OtpEntry {
+  code: string;
+  expiresAt: number;
+  sentAt: number;
+  attempts: number;
+}
+const adminOtpStore = new Map<string, OtpEntry>();
 
-async function verifyAdmin(userId: string): Promise<boolean> {
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
-  return !!user && (user.isAdmin || user.email === ADMIN_EMAIL);
+const OTP_RESEND_COOLDOWN_MS = 60_000; // 1 minute between resends
+const OTP_MAX_ATTEMPTS = 5;
+
+function extractAdminUserId(req: Request): string | null {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) return null;
+  return verifyAdminToken(auth.slice(7));
 }
 
 router.post("/admin/send-otp", async (req, res) => {
@@ -21,8 +32,22 @@ router.post("/admin/send-otp", async (req, res) => {
       res.status(403).json({ error: "Sirf admin email ke liye OTP bheja ja sakta hai" });
       return;
     }
+
+    // Enforce resend cooldown
+    const existing = adminOtpStore.get(ADMIN_EMAIL);
+    if (existing && Date.now() - existing.sentAt < OTP_RESEND_COOLDOWN_MS) {
+      const waitSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - (Date.now() - existing.sentAt)) / 1000);
+      res.status(429).json({ error: `Please wait ${waitSec} seconds before requesting another OTP.` });
+      return;
+    }
+
     const code = String(Math.floor(100000 + Math.random() * 900000));
-    adminOtpStore.set(ADMIN_EMAIL, { code, expiresAt: Date.now() + 10 * 60 * 1000 });
+    adminOtpStore.set(ADMIN_EMAIL, {
+      code,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      sentAt: Date.now(),
+      attempts: 0,
+    });
     await sendAdminOtpEmail({ code });
     res.json({ ok: true, message: "OTP saharaapphelp@gmail.com par bhej diya gaya" });
   } catch (err) {
@@ -42,17 +67,31 @@ router.post("/admin/login", async (req, res) => {
       return;
     }
     const stored = adminOtpStore.get(ADMIN_EMAIL);
-    if (!stored || stored.code !== otp.trim() || Date.now() > stored.expiresAt) {
-      res.status(401).json({ error: "OTP galat hai ya expire ho gaya. Dobara OTP mangaiye." });
+    if (!stored || Date.now() > stored.expiresAt) {
+      adminOtpStore.delete(ADMIN_EMAIL);
+      res.status(401).json({ error: "OTP expire ho gaya. Dobara OTP mangaiye." });
       return;
     }
+
+    if (stored.code !== otp.trim()) {
+      stored.attempts += 1;
+      if (stored.attempts >= OTP_MAX_ATTEMPTS) {
+        adminOtpStore.delete(ADMIN_EMAIL);
+        res.status(429).json({ error: "Bahut zyada galat attempts. OTP invalid kar diya gaya. Dobara OTP mangaiye." });
+        return;
+      }
+      res.status(401).json({ error: "OTP galat hai. Dobara try karein." });
+      return;
+    }
+
     adminOtpStore.delete(ADMIN_EMAIL);
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, ADMIN_EMAIL));
     if (!user) {
       res.status(403).json({ error: "Admin account nahi mila. Pehle Sahara app mein register karein." });
       return;
     }
-    res.json({ ok: true, userId: user.id, name: user.name, email: user.email });
+    const token = issueAdminToken(user.id);
+    res.json({ ok: true, userId: user.id, name: user.name, email: user.email, token });
   } catch (err) {
     res.status(500).json({ error: "Login failed" });
   }
@@ -60,8 +99,8 @@ router.post("/admin/login", async (req, res) => {
 
 router.get("/admin/stats", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -110,8 +149,8 @@ router.get("/admin/stats", async (req, res) => {
 
 router.get("/admin/users", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -139,8 +178,8 @@ router.get("/admin/users", async (req, res) => {
 
 router.post("/admin/users/:id/block", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -180,8 +219,8 @@ router.post("/admin/users/:id/block", async (req, res) => {
 
 router.post("/admin/users/:id/unblock", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -197,8 +236,8 @@ router.post("/admin/users/:id/unblock", async (req, res) => {
 
 router.delete("/admin/users/:id", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -216,8 +255,8 @@ router.delete("/admin/users/:id", async (req, res) => {
 
 router.get("/admin/requests", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -233,8 +272,8 @@ router.get("/admin/requests", async (req, res) => {
 
 router.delete("/admin/requests/:id", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
@@ -247,8 +286,8 @@ router.delete("/admin/requests/:id", async (req, res) => {
 
 router.patch("/admin/requests/:id/status", async (req, res) => {
   try {
-    const { userId } = req.query as { userId?: string };
-    if (!userId || !(await verifyAdmin(userId))) {
+    const userId = extractAdminUserId(req);
+    if (!userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }

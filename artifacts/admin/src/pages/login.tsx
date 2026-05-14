@@ -93,7 +93,7 @@ export default function Login() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Login failed");
-      localStorage.setItem("adminSession", JSON.stringify({ userId: data.userId, name: data.name, email: data.email }));
+      localStorage.setItem("adminSession", JSON.stringify({ userId: data.userId, name: data.name, email: data.email, token: data.token ?? "" }));
       toast({ title: "Welcome back 👋", description: "Sahara Admin mein aapka swagat hai।" });
       setLocation("/dashboard");
     } catch (error: any) {
