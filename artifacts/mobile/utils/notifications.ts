@@ -62,16 +62,15 @@ async function registerTokenWithServer(token: string) {
   }
 }
 
-export async function notifyNewRequest(params: {
-  title: string;
-  category: string;
-  helpType: string;
-  location: string;
-}) {
+export async function notifyNewRequest(
+  params: { title: string; category: string; helpType: string; location: string },
+  token?: string,
+) {
+  if (!token) return;
   try {
     await fetch(`${API_BASE}/api/notifications/new-request`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-sahara-token": token },
       body: JSON.stringify(params),
     });
   } catch {

@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { requireAuth } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -14,7 +15,7 @@ router.post("/notifications/register", (req, res) => {
   }
 });
 
-router.post("/notifications/new-request", async (req, res) => {
+router.post("/notifications/new-request", requireAuth, async (req, res) => {
   const { title, category, helpType, location } = req.body as {
     title?: string;
     category?: string;

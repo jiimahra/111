@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import OpenAI from "openai";
 import { Readable } from "stream";
 import { toFile } from "openai/uploads";
+import { requireAuth } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -77,7 +78,7 @@ If anyone asks about the owner, creator, founder, or malik of Sahara, always say
 • Never make up hospital names — say "apne najdeek ki hospital mein jaayein" if unsure
 • End responses with encouragement: कोई अकेला नहीं है — Sahara साथ है 💜`;
 
-router.post("/ai/chat", async (req, res) => {
+router.post("/ai/chat", requireAuth, async (req, res) => {
   try {
     const { messages } = req.body as {
       messages: { role: "user" | "assistant"; content: string }[];
@@ -102,7 +103,7 @@ router.post("/ai/chat", async (req, res) => {
   }
 });
 
-router.post("/ai/transcribe", async (req, res) => {
+router.post("/ai/transcribe", requireAuth, async (req, res) => {
   try {
     const { audio, mimeType } = req.body as { audio?: string; mimeType?: string };
     if (!audio) {

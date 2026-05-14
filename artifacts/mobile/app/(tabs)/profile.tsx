@@ -721,6 +721,7 @@ export default function ProfileScreen() {
 
       const uploadRes = await fetch(`${API_BASE_URL}/api/upload`, {
         method: "POST",
+        headers: authToken ? { "x-sahara-token": authToken } : {},
         body: formData,
       });
 

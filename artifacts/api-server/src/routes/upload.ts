@@ -4,6 +4,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { objectStorageClient } from "../lib/objectStorage";
 import { ObjectNotFoundError } from "../lib/objectStorage";
+import { requireAuth } from "../lib/auth-middleware";
 
 const router: IRouter = Router();
 
@@ -32,7 +33,7 @@ function getBucketAndDir() {
   return { bucketId, dirWithinBucket };
 }
 
-router.post("/upload", upload.array("files", 10), async (req, res) => {
+router.post("/upload", requireAuth, upload.array("files", 10), async (req, res) => {
   try {
     const files = req.files as Express.Multer.File[];
     if (!files || files.length === 0) {

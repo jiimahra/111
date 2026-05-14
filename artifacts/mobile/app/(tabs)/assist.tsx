@@ -18,6 +18,7 @@ import { useAudioRecorder, AudioModule, RecordingPresets } from "expo-audio";
 import * as FileSystem from "expo-file-system";
 
 import { useColors } from "@/hooks/useColors";
+import { useApp } from "@/contexts/AppContext";
 
 const API_BASE =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -44,6 +45,7 @@ export default function AssistScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = insets.bottom + 50;
   const colors = useColors();
+  const { authToken } = useApp();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -84,7 +86,10 @@ export default function AssistScreen() {
       try {
         const res = await fetch(`${API_BASE}/api/ai/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { "x-sahara-token": authToken } : {}),
+          },
           body: JSON.stringify({
             messages: history.map((m) => ({ role: m.role, content: m.content })),
           }),
@@ -139,7 +144,10 @@ export default function AssistScreen() {
       });
       const res = await fetch(`${API_BASE}/api/ai/transcribe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { "x-sahara-token": authToken } : {}),
+        },
         body: JSON.stringify({ audio: base64, mimeType: "audio/m4a" }),
       });
       if (res.ok) {

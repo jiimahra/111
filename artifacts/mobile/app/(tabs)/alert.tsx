@@ -48,7 +48,7 @@ interface PickedMedia {
 export default function PostScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { addRequest, profile } = useApp();
+  const { addRequest, profile, authToken } = useApp();
   const [step, setStep] = useState<"choose" | "form">("choose");
   const [helpType, setHelpType] = useState<HelpType>("need_help");
   const [category, setCategory] = useState<HelpCategory>("medical");
@@ -195,6 +195,7 @@ export default function PostScreen() {
       }
       const res = await fetch(`${API_BASE}/api/upload`, {
         method: "POST",
+        headers: authToken ? { "x-sahara-token": authToken } : {},
         body: formData,
       });
       if (!res.ok) throw new Error("Upload failed");
@@ -257,12 +258,10 @@ export default function PostScreen() {
       isAnonymous,
     });
 
-    void notifyNewRequest({
-      title: title.trim(),
-      category,
-      helpType,
-      location: location.trim(),
-    });
+    void notifyNewRequest(
+      { title: title.trim(), category, helpType, location: location.trim() },
+      authToken,
+    );
 
     void scheduleLocalNotification(
       "Posted! 🙏",
