@@ -130,6 +130,16 @@ export default function Login() {
         )}
       </Card>
 
+      <a
+        href="https://expo.dev/artifacts/eas/4CHa2dAwZax9jxF3XyPddD.apk"
+        download
+        className="w-full max-w-md"
+      >
+        <Button variant="outline" className="w-full border-primary/30 hover:bg-primary/10">
+          📱 Sahara APK Download Karein
+        </Button>
+      </a>
+
     </div>
   );
 }
