@@ -366,12 +366,12 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
   }
 
   function handleGooglePress() {
-    const url = `${API_BASE}/api/auth/google/start?mode=${tab}`;
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      window.location.href = url;
-    } else {
-      const { Linking } = require("react-native");
-      void Linking.openURL(url);
+    // Google login removed
+    void (async () => {
+      const { Alert } = require("react-native");
+      Alert.alert("", "Google login hataya gaya hai.");
+    })();
+    if (false) {
     }
   }
 
@@ -581,16 +581,6 @@ function AuthScreen({ topPad, insets }: { topPad: number; insets: { bottom: numb
             </>
           )}
 
-          <View style={styles.orRow}>
-            <View style={[styles.orLine, { backgroundColor: border }]} />
-            <Text style={[styles.orText, { color: muted }]}>या</Text>
-            <View style={[styles.orLine, { backgroundColor: border }]} />
-          </View>
-
-          <TouchableOpacity style={[styles.googleBtn, { borderColor: border, backgroundColor: bg }]} onPress={handleGooglePress}>
-            <Text style={{ fontSize: 18 }}>🌐</Text>
-            <Text style={[styles.googleBtnText, { color: fg }]}>Google se continue करें</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>

@@ -203,11 +203,18 @@ router.get("/hospitals", async (req, res) => {
 
     const query = `[out:json][timeout:20];(node["amenity"="hospital"](${S},${W},${N},${E});way["amenity"="hospital"](${S},${W},${N},${E});node["amenity"="clinic"](${S},${W},${N},${E});way["amenity"="clinic"](${S},${W},${N},${E});node["amenity"="doctors"](${S},${W},${N},${E});node["amenity"="veterinary"](${S},${W},${N},${E});way["amenity"="veterinary"](${S},${W},${N},${E});node["healthcare"="hospital"](${S},${W},${N},${E});way["healthcare"="hospital"](${S},${W},${N},${E});node["healthcare"="veterinary"](${S},${W},${N},${E});node["healthcare"="clinic"](${S},${W},${N},${E}););out center 250;`;
 
-    // Fetch Overpass + Google open status in parallel
-    const [overpassData, google] = await Promise.all([
-      overpassGET(query),
-      googleNearbyOpenStatus(uLat, uLng),
+    // Fetch Overpass + Google open status in parallel — both are optional
+    const [overpassResult, google] = await Promise.all([
+      overpassGET(query).catch((e: any) => {
+        console.warn("Overpass failed, returning empty:", e.message);
+        return { elements: [] };
+      }),
+      googleNearbyOpenStatus(uLat, uLng).catch((e: any) => {
+        console.warn("Google Places failed:", e.message);
+        return { byCoord: new Map(), byName: new Map(), entries: [] };
+      }),
     ]);
+    const overpassData = overpassResult;
 
     const { byCoord, byName, entries: googleEntries } = google;
 
