@@ -293,6 +293,27 @@ const server = http.createServer((req, res) => {
     pathname = pathname.slice(basePath.length) || "/";
   }
 
+  // robots.txt — allow all crawlers
+  if (pathname === "/robots.txt") {
+    res.writeHead(200, { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=86400" });
+    res.end("User-agent: *\nAllow: /\nSitemap: https://www.saharaapphelp.com/sitemap.xml\n");
+    return;
+  }
+
+  // sitemap.xml — basic sitemap for indexing
+  if (pathname === "/sitemap.xml") {
+    res.writeHead(200, { "content-type": "application/xml; charset=utf-8", "cache-control": "public, max-age=3600" });
+    res.end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.saharaapphelp.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>`);
+    return;
+  }
+
   // Health check
   if (pathname === "/status") {
     res.writeHead(200, { "content-type": "application/json" });
