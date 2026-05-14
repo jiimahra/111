@@ -48,28 +48,58 @@ function ApkManager() {
     onError: (err: any) => setMessage(`❌ Error: ${err.message}`),
   });
 
-  const { mutate: uploadApk, isPending } = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("apk", file);
-      formData.append("userId", session.userId ?? "");
-      const res = await fetch("/api/admin/upload-apk", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Upload failed");
-      return data;
-    },
-    onSuccess: () => {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
+  async function uploadApk(file: File) {
+    setIsUploading(true);
+    setUploadProgress(0);
+    setMessage("");
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const formData = new FormData();
+        formData.append("apk", file);
+        formData.append("userId", session.userId ?? "");
+
+        xhr.upload.addEventListener("progress", (e) => {
+          if (e.lengthComputable) {
+            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+          }
+        });
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            try {
+              const data = JSON.parse(xhr.responseText);
+              reject(new Error(data.error ?? "Upload failed"));
+            } catch {
+              reject(new Error("Upload failed"));
+            }
+          }
+        });
+
+        xhr.addEventListener("error", () => reject(new Error("Network error")));
+        xhr.open("POST", "/api/admin/upload-apk");
+        xhr.send(formData);
+      });
+
+      setUploadProgress(100);
       setMessage("✅ APK successfully upload ho gaya!");
       queryClient.invalidateQueries({ queryKey: ["apk-status"] });
-    },
-    onError: (err: any) => setMessage(`❌ Error: ${err.message}`),
-  });
+    } catch (err: any) {
+      setMessage(`❌ Error: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  }
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    setMessage("");
-    uploadApk(file);
+    if (file) uploadApk(file);
+    e.target.value = "";
   }
 
   const sizeInMB = status?.size ? (Number(status.size) / 1024 / 1024).toFixed(1) : null;
@@ -105,7 +135,22 @@ function ApkManager() {
           </div>
         )}
 
-        {message && (
+        {isUploading && (
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Upload ho raha hai...</span>
+              <span className="font-semibold text-primary">{uploadProgress}%</span>
+            </div>
+            <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-200 rounded-full"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {message && !isUploading && (
           <p className="text-sm font-medium">{message}</p>
         )}
 
@@ -120,18 +165,18 @@ function ApkManager() {
         <div className="flex gap-2">
           <Button
             onClick={() => fileRef.current?.click()}
-            disabled={isPending || isDeleting}
+            disabled={isUploading || isDeleting}
             className="flex-1"
             variant="outline"
           >
             <Upload className="h-4 w-4 mr-2" />
-            {isPending ? "Upload ho raha hai..." : status?.exists ? "Naya APK Upload Karein" : "APK Upload Karein"}
+            {isUploading ? `Uploading... ${uploadProgress}%` : status?.exists ? "Naya APK Upload Karein" : "APK Upload Karein"}
           </Button>
 
           {status?.exists && (
             <Button
               variant="destructive"
-              disabled={isDeleting || isPending}
+              disabled={isDeleting || isUploading}
               onClick={() => {
                 if (confirm("Kya aap sach mein APK delete karna chahte hain?")) {
                   deleteApk();
