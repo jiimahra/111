@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { objectStorageClient } from "../lib/objectStorage";
+import { verifyAdminToken } from "../lib/tokens";
 
 const router = Router();
 
@@ -11,6 +12,20 @@ function getBucket() {
   const bucketId = process.env.DEFAULT_OBJECT_STORAGE_BUCKET_ID ?? "";
   if (!bucketId) throw new Error("Object storage not configured");
   return objectStorageClient.bucket(bucketId);
+}
+
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) {
+    res.status(401).json({ error: "Admin authentication required" });
+    return;
+  }
+  const userId = verifyAdminToken(auth.slice(7));
+  if (!userId) {
+    res.status(401).json({ error: "Invalid or expired admin token" });
+    return;
+  }
+  next();
 }
 
 router.get("/download/sahara-app", async (req, res) => {
@@ -33,10 +48,8 @@ router.get("/download/sahara-app", async (req, res) => {
   }
 });
 
-router.post("/admin/upload-apk", upload.single("apk"), async (req, res) => {
+router.post("/admin/upload-apk", requireAdmin, upload.single("apk"), async (req, res) => {
   try {
-    const { userId } = req.body as { userId?: string };
-    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
     const file = req.file;
     if (!file) { res.status(400).json({ error: "APK file required" }); return; }
     const bucket = getBucket();
@@ -48,10 +61,8 @@ router.post("/admin/upload-apk", upload.single("apk"), async (req, res) => {
   }
 });
 
-router.delete("/admin/delete-apk", async (req, res) => {
+router.delete("/admin/delete-apk", requireAdmin, async (req, res) => {
   try {
-    const { userId } = req.body as { userId?: string };
-    if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
     const bucket = getBucket();
     const file = bucket.file(APK_OBJECT_NAME);
     const [exists] = await file.exists();
@@ -77,7 +88,7 @@ router.get("/apk-version", async (req, res) => {
   }
 });
 
-router.get("/admin/apk-status", async (req, res) => {
+router.get("/admin/apk-status", requireAdmin, async (req, res) => {
   try {
     const bucket = getBucket();
     const file = bucket.file(APK_OBJECT_NAME);

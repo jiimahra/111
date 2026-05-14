@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useStats } from "@/hooks/use-admin";
+import { useStats, apiFetch } from "@/hooks/use-admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -20,22 +20,19 @@ function ApkManager() {
   const [message, setMessage] = useState("");
   const queryClient = useQueryClient();
 
-  const session = JSON.parse(localStorage.getItem("adminSession") || "{}");
-
   const { data: status, isLoading } = useQuery({
     queryKey: ["apk-status"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/apk-status");
+      const res = await apiFetch("/api/admin/apk-status");
       return res.json() as Promise<{ exists: boolean; size?: number; updated?: string }>;
     },
   });
 
   const { mutate: deleteApk, isPending: isDeleting } = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/admin/delete-apk", {
+      const res = await apiFetch("/api/admin/delete-apk", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: session.userId ?? "" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Delete failed");
@@ -60,7 +57,13 @@ function ApkManager() {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
         formData.append("apk", file);
-        formData.append("userId", session.userId ?? "");
+
+        const session = JSON.parse(localStorage.getItem("adminSession") || "{}");
+        const token = session?.token as string | undefined;
+        if (!token) {
+          reject(new Error("Admin session expired. Please login again."));
+          return;
+        }
 
         xhr.upload.addEventListener("progress", (e) => {
           if (e.lengthComputable) {
@@ -83,6 +86,7 @@ function ApkManager() {
 
         xhr.addEventListener("error", () => reject(new Error("Network error")));
         xhr.open("POST", "/api/admin/upload-apk");
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
         xhr.send(formData);
       });
 
